@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#ff8a3d">
+<title>きいちアプリ</title>
+<style>
+:root{
+  --bg:#fff7ee; --card:#ffffff; --ink:#3d312b; --sub:#8a7a70; --line:#f2e2d2;
+  --pri:#ff8a3d; --yel:#ffc93c; --grn:#3fc79a; --blu:#4aa8ff; --pnk:#ff6f91; --pur:#9b6dff; --red:#ff5252;
+  --r:18px; --sh:0 4px 0 rgba(0,0,0,.06), 0 8px 20px rgba(180,120,60,.10);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink); overflow-x:hidden;
+  font-family:"Hiragino Maru Gothic ProN",-apple-system,"Segoe UI","Yu Gothic UI",Meiryo,sans-serif;
+  font-size:16px; line-height:1.6; padding-bottom:32px;
+}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+.wrap{max-width:760px;margin:0 auto;padding:0 14px}
+
+header{
+  background:linear-gradient(135deg,var(--pri),var(--yel));
+  color:#fff; padding:14px 0 12px; box-shadow:0 2px 12px rgba(255,138,61,.35);
+  position:relative; z-index:5;
+}
+.logo{display:flex;align-items:center;gap:10px;font-size:1.45rem;font-weight:800;letter-spacing:.04em}
+.logo .badge{font-size:1.6rem}
+.logo small{display:block;font-size:.7rem;font-weight:600;opacity:.9;letter-spacing:.08em}
+
+.tabbar{position:sticky;top:0;z-index:4;background:var(--bg);border-bottom:2px solid var(--line)}
+.tabscroll{display:flex;gap:8px;overflow-x:auto;padding:10px 14px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.tabscroll::-webkit-scrollbar{display:none}
+.tab{
+  flex:0 0 auto;min-height:44px;padding:8px 14px;border-radius:999px;background:#fff;
+  border:2px solid var(--line);font-weight:700;font-size:.92rem;white-space:nowrap;
+  display:flex;align-items:center;gap:6px;transition:transform .12s,background .15s,color .15s;
+}
+.tab:active{transform:scale(.95)}
+.tab[aria-selected="true"]{background:var(--pri);border-color:var(--pri);color:#fff;box-shadow:0 3px 0 rgba(0,0,0,.08)}
+
+.panel{display:none;padding-top:18px;animation:fade .25s ease}
+.panel.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.card{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:18px;margin-bottom:14px}
+h2.title{margin:0 0 12px;font-size:1.15rem;display:flex;align-items:center;gap:8px}
+.hint{color:var(--sub);font-size:.85rem;margin:8px 0 0;text-align:center}
+
+.btn{
+  min-height:48px;padding:10px 18px;border-radius:14px;background:var(--pri);color:#fff;
+  font-weight:800;font-size:1rem;box-shadow:0 4px 0 rgba(0,0,0,.12);transition:transform .1s,box-shadow .1s;
+}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.12)}
+.btn.gray{background:#e8ddd2;color:var(--ink)}
+.btn.grn{background:var(--grn)} .btn.blu{background:var(--blu)} .btn.pnk{background:var(--pnk)} .btn.pur{background:var(--pur)}
+.row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+
+.clockbox{display:flex;flex-direction:column;align-items:center;gap:10px}
+.clockface{width:min(74vw,260px);height:min(74vw,260px)}
+.digital{font-size:2.6rem;font-weight:800;font-variant-numeric:tabular-nums;color:var(--pri)}
+.dateline{font-size:1.05rem;font-weight:700}
+.yomi{background:#fff6e8;border:2px dashed var(--yel);border-radius:14px;padding:8px 16px;font-weight:800;color:#c96a12}
+
+.calhead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.calhead .ym{font-size:1.2rem;font-weight:800}
+.navb{width:44px;height:44px;border-radius:50%;background:#fff2e3;font-size:1.2rem;font-weight:800;color:var(--pri)}
+table.cal{width:100%;border-collapse:collapse;table-layout:fixed}
+table.cal th{font-size:.8rem;padding:6px 0;color:var(--sub)}
+table.cal th.sun{color:var(--red)} table.cal th.sat{color:var(--blu)}
+table.cal td{padding:2px;text-align:center}
+.day{width:100%;aspect-ratio:1/1;border-radius:12px;font-weight:700;font-size:.95rem;display:flex;align-items:center;justify-content:center}
+.day.sun{color:var(--red)} .day.sat{color:var(--blu)}
+.day.other{opacity:.28}
+.day.today{background:var(--pri);color:#fff !important;box-shadow:0 3px 0 rgba(0,0,0,.1)}
+.day.sel{outline:3px solid var(--yel);outline-offset:-3px}
+#calInfo{margin-top:12px;text-align:center;font-weight:700;min-height:1.6em;color:var(--pri)}
+
+.calcdisp{background:#2f2a26;color:#fff;border-radius:14px;padding:12px 16px;text-align:right;margin-bottom:12px}
+.calcdisp .sub{font-size:.9rem;opacity:.6;min-height:1.3em;font-variant-numeric:tabular-nums}
+.calcdisp .main{font-size:2.2rem;font-weight:800;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis}
+.keys{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.key{min-height:56px;border-radius:14px;background:#fff5ea;font-size:1.35rem;font-weight:800;box-shadow:0 4px 0 rgba(0,0,0,.08);transition:transform .08s,box-shadow .08s}
+.key:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.08)}
+.key.op{background:#ffe6cf;color:#d8721c}
+.key.eq{background:var(--pri);color:#fff}
+.key.fn{background:#e9e1d9}
+
+.swtime{font-size:clamp(2.6rem,13vw,4rem);font-weight:800;text-align:center;font-variant-numeric:tabular-nums;color:var(--grn)}
+#laps{list-style:none;margin:14px 0 0;padding:0;max-height:230px;overflow-y:auto}
+#laps li{display:flex;justify-content:space-between;padding:8px 10px;border-bottom:1px dashed var(--line);font-variant-numeric:tabular-nums;font-weight:700}
+#laps li span:first-child{color:var(--sub)}
+
+.scores{display:flex;gap:10px;justify-content:center;margin-bottom:12px}
+.score{background:#fff3e4;border-radius:12px;padding:6px 18px;text-align:center;min-width:96px}
+.score b{display:block;font-size:1.4rem;font-variant-numeric:tabular-nums}
+.score small{color:var(--sub);font-size:.72rem;font-weight:700}
+#board{position:relative;background:#e6d8c8;border-radius:16px;padding:8px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;aspect-ratio:1/1;max-width:420px;margin:0 auto;touch-action:none;user-select:none}
+.cell{background:rgba(255,255,255,.45);border-radius:11px}
+.tile{position:absolute;display:flex;align-items:center;justify-content:center;border-radius:11px;font-weight:800;background:#ffe9c9;color:#7a5a34;transition:left .12s,top .12s;font-variant-numeric:tabular-nums}
+.tile.pop{animation:pop .16s ease}
+@keyframes pop{from{transform:scale(.5)}to{transform:scale(1)}}
+.t2{background:#fff0d8} .t4{background:#ffe2b8} .t8{background:#ffc78a;color:#fff}
+.t16{background:#ffab63;color:#fff} .t32{background:#ff8f52;color:#fff} .t64{background:#ff6f45;color:#fff}
+.t128{background:#ffd23f;color:#fff} .t256{background:#ffc21a;color:#fff} .t512{background:#f5ad00;color:#fff}
+.t1024{background:#3fc79a;color:#fff} .t2048{background:#9b6dff;color:#fff}
+.overlay{position:absolute;inset:0;background:rgba(255,247,238,.92);border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;font-size:1.6rem;font-weight:800;z-index:3}
+.overlay[hidden]{display:none}
+
+.chips{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:10px}
+.chip{min-height:44px;padding:8px 16px;border-radius:999px;background:#fff;border:2px solid var(--line);font-weight:800}
+.chip[aria-pressed="true"]{background:var(--pur);border-color:var(--pur);color:#fff}
+.qbar{height:10px;background:#f0e6db;border-radius:99px;overflow:hidden;margin-bottom:14px}
+.qbar>i{display:block;height:100%;width:0;background:var(--pur);transition:width .25s}
+.question{font-size:clamp(2rem,10vw,3rem);font-weight:800;text-align:center;margin:6px 0 18px;font-variant-numeric:tabular-nums}
+.choices{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.choice{min-height:64px;border-radius:16px;background:#f6efe8;font-size:1.6rem;font-weight:800;box-shadow:0 4px 0 rgba(0,0,0,.08)}
+.choice.ok{background:var(--grn);color:#fff} .choice.ng{background:var(--red);color:#fff}
+.judge{text-align:center;font-size:1.5rem;font-weight:800;min-height:1.5em;margin-top:10px}
+
+.guessrow{display:flex;gap:8px;justify-content:center;align-items:center}
+input[type=number]{width:130px;min-height:52px;border:3px solid var(--line);border-radius:14px;font-size:1.6rem;text-align:center;font-weight:800;font-family:inherit;color:inherit;background:#fff}
+input[type=number]:focus{outline:none;border-color:var(--pnk)}
+input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+#guessMsg{text-align:center;font-size:1.3rem;font-weight:800;min-height:1.6em;margin:14px 0 6px}
+#guessLog{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+#guessLog span{background:#fff0f4;border-radius:999px;padding:4px 12px;font-weight:700;font-size:.9rem}
+
+.tgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;max-width:420px;margin:0 auto}
+.tcell{aspect-ratio:1/1;border-radius:12px;background:#eef6ff;color:#2a6db5;font-size:clamp(1rem,5vw,1.5rem);font-weight:800;box-shadow:0 3px 0 rgba(0,0,0,.07)}
+.tcell.done{background:var(--grn);color:#fff;box-shadow:none;opacity:.55}
+.tcell.bad{animation:shake .3s}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px);background:#ff5252;color:#fff}75%{transform:translateX(6px);background:#ff5252;color:#fff}}
+.bigstat{text-align:center;font-size:2rem;font-weight:800;font-variant-numeric:tabular-nums;color:var(--blu)}
+
+@media (min-width:600px){
+  body{font-size:17px}
+  .card{padding:24px}
+  .digital{font-size:3.2rem}
+}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms !important;transition-duration:.01ms !important}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="logo"><span class="badge">🔢</span><span>きいちアプリ<small>すうじで あそぼう！</small></span></div>
+  </div>
+</header>
+
+<nav class="tabbar">
+  <div class="tabscroll wrap" role="tablist" aria-label="きのうを えらぶ">
+    <button class="tab" role="tab" data-tab="clock"  aria-selected="true"  aria-controls="p-clock">🕐 とけい</button>
+    <button class="tab" role="tab" data-tab="cal"    aria-selected="false" aria-controls="p-cal">📅 カレンダー</button>
+    <button class="tab" role="tab" data-tab="calc"   aria-selected="false" aria-controls="p-calc">🧮 でんたく</button>
+    <button class="tab" role="tab" data-tab="watch"  aria-selected="false" aria-controls="p-watch">⏱️ ストップウォッチ</button>
+    <button class="tab" role="tab" data-tab="puzzle" aria-selected="false" aria-controls="p-puzzle">🧩 1024パズル</button>
+    <button class="tab" role="tab" data-tab="quiz"   aria-selected="false" aria-controls="p-quiz">➕ けいさんチャレンジ</button>
+    <button class="tab" role="tab" data-tab="guess"  aria-selected="false" aria-controls="p-guess">🎯 かずあて</button>
+    <button class="tab" role="tab" data-tab="touch"  aria-selected="false" aria-controls="p-touch">👆 すうじタッチ</button>
+  </div>
+</nav>
+
+<main class="wrap">
+
+  <!-- とけい -->
+  <section class="panel active" id="p-clock" role="tabpanel">
+    <div class="card clockbox">
+      <h2 class="title">🕐 とけい</h2>
+      <svg class="clockface" viewBox="0 0 200 200" aria-hidden="true">
+        <circle cx="100" cy="100" r="96" fill="#fff" stroke="#ffc93c" stroke-width="6"/>
+        <g id="ticks"></g>
+        <g id="nums"></g>
+        <line id="hHand" x1="100" y1="100" x2="100" y2="55" stroke="#3d312b" stroke-width="8" stroke-linecap="round"/>
+        <line id="mHand" x1="100" y1="100" x2="100" y2="32" stroke="#ff8a3d" stroke-width="6" stroke-linecap="round"/>
+        <line id="sHand" x1="100" y1="112" x2="100" y2="26" stroke="#ff6f91" stroke-width="2.5" stroke-linecap="round"/>
+        <circle cx="100" cy="100" r="6" fill="#3d312b"/>
+      </svg>
+      <div class="digital" id="dig">00:00:00</div>
+      <div class="dateline" id="dateline">-</div>
+      <div class="yomi" id="yomi">-</div>
+    </div>
+  </section>
+
+  <!-- カレンダー -->
+  <section class="panel" id="p-cal" role="tabpanel">
+    <div class="card">
+      <div class="calhead">
+        <button class="navb" id="prevM" aria-label="まえの月">◀</button>
+        <div class="ym" id="ym">-</div>
+        <button class="navb" id="nextM" aria-label="つぎの月">▶</button>
+      </div>
+      <table class="cal">
+        <thead><tr><th class="sun">日</th><th>月</th><th>火</th><th>水</th><th>木</th><th>金</th><th class="sat">土</th></tr></thead>
+        <tbody id="calBody"></tbody>
+      </table>
+      <div id="calInfo"></div>
+      <div class="row" style="margin-top:12px"><button class="btn gray" id="todayBtn">きょうへ もどる</button></div>
+    </div>
+  </section>
+
+  <!-- でんたく -->
+  <section class="panel" id="p-calc" role="tabpanel">
+    <div class="card">
+      <h2 class="title">🧮 でんたく</h2>
+      <div class="calcdisp"><div class="sub" id="calcSub">&nbsp;</div><div class="main" id="calcMain">0</div></div>
+      <div class="keys" id="keys">
+        <button class="key fn" data-k="C">C</button>
+        <button class="key fn" data-k="back">←</button>
+        <button class="key fn" data-k="sign">±</button>
+        <button class="key op" data-k="/">÷</button>
+        <button class="key" data-k="7">7</button><button class="key" data-k="8">8</button><button class="key" data-k="9">9</button>
+        <button class="key op" data-k="*">×</button>
+        <button class="key" data-k="4">4</button><button class="key" data-k="5">5</button><button class="key" data-k="6">6</button>
+        <button class="key op" data-k="-">−</button>
+        <button class="key" data-k="1">1</button><button class="key" data-k="2">2</button><button class="key" data-k="3">3</button>
+        <button class="key op" data-k="+">＋</button>
+        <button class="key" data-k="0" style="grid-column:span 2">0</button>
+        <button class="key" data-k=".">.</button>
+        <button class="key eq" data-k="=">＝</button>
+      </div>
+      <p class="hint">キーボードでも けいさんできるよ</p>
+    </div>
+  </section>
+
+  <!-- ストップウォッチ -->
+  <section class="panel" id="p-watch" role="tabpanel">
+    <div class="card">
+      <h2 class="title">⏱️ ストップウォッチ</h2>
+      <div class="swtime" id="swTime">00:00.00</div>
+      <div class="row" style="margin-top:16px">
+        <button class="btn grn" id="swStart">スタート</button>
+        <button class="btn blu" id="swLap">ラップ</button>
+        <button class="btn gray" id="swReset">リセット</button>
+      </div>
+      <ul id="laps"></ul>
+    </div>
+  </section>
+
+  <!-- パズル -->
+  <section class="panel" id="p-puzzle" role="tabpanel">
+    <div class="card">
+      <h2 class="title">🧩 1024パズル</h2>
+      <div class="scores">
+        <div class="score"><small>スコア</small><b id="pScore">0</b></div>
+        <div class="score"><small>ベスト</small><b id="pBest">0</b></div>
+      </div>
+      <div id="board">
+        <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+        <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+        <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+        <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+        <div class="overlay" id="pOver" hidden>
+          <div id="pOverMsg"></div>
+          <div class="row">
+            <button class="btn grn" id="pCont" hidden>このまま つづける</button>
+            <button class="btn" id="pOverBtn">もういちど</button>
+          </div>
+        </div>
+      </div>
+      <div class="row" style="margin-top:14px"><button class="btn" id="pNew">あたらしくはじめる</button></div>
+      <p class="hint">おなじ かずを くっつけて 1024を めざそう！<br>やじるしキー・WASD・スワイプ で うごくよ</p>
+    </div>
+  </section>
+
+  <!-- けいさんチャレンジ -->
+  <section class="panel" id="p-quiz" role="tabpanel">
+    <div class="card" id="quizSetup">
+      <h2 class="title">➕ けいさんチャレンジ</h2>
+      <div class="chips" id="qMode">
+        <button class="chip" data-m="add" aria-pressed="true">たしざん</button>
+        <button class="chip" data-m="sub" aria-pressed="false">ひきざん</button>
+        <button class="chip" data-m="mul" aria-pressed="false">かけざん</button>
+        <button class="chip" data-m="div" aria-pressed="false">わりざん</button>
+        <button class="chip" data-m="mix" aria-pressed="false">ミックス</button>
+      </div>
+      <div class="chips" id="qLevel">
+        <button class="chip" data-l="1" aria-pressed="true">★ かんたん</button>
+        <button class="chip" data-l="2" aria-pressed="false">★★ ふつう</button>
+        <button class="chip" data-l="3" aria-pressed="false">★★★ むずかしい</button>
+      </div>
+      <div class="row" style="margin-top:8px"><button class="btn pur" id="qStart">10もん スタート！</button></div>
+      <p class="hint" id="qLast"></p>
+    </div>
+
+    <div class="card" id="quizPlay" style="display:none">
+      <div class="qbar"><i id="qProg"></i></div>
+      <div style="display:flex;justify-content:space-between;font-weight:800;color:var(--sub)">
+        <span id="qCount">1 / 10もん</span><span id="qTimer">0びょう</span>
+      </div>
+      <div class="question" id="qText">-</div>
+      <div class="choices" id="qChoices"></div>
+      <div class="judge" id="qJudge"></div>
+    </div>
+
+    <div class="card" id="quizResult" style="display:none">
+      <h2 class="title">けっか はっぴょう！</h2>
+      <div class="bigstat" id="qStars">-</div>
+      <div class="bigstat" id="qScore" style="color:var(--pur)">-</div>
+      <div class="hint" id="qDetail"></div>
+      <div class="row" style="margin-top:14px">
+        <button class="btn pur" id="qAgain">もういちど</button>
+        <button class="btn gray" id="qBack">せっていに もどる</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- かずあて -->
+  <section class="panel" id="p-guess" role="tabpanel">
+    <div class="card">
+      <h2 class="title">🎯 かずあてゲーム</h2>
+      <p class="hint" style="margin-bottom:12px">1から100の あいだの ひみつの かずを あててね！</p>
+      <div class="guessrow">
+        <input type="number" id="gInput" min="1" max="100" inputmode="numeric" placeholder="??">
+        <button class="btn pnk" id="gGo">こたえる</button>
+      </div>
+      <div id="guessMsg"></div>
+      <div id="guessLog"></div>
+      <div class="row" style="margin-top:14px"><button class="btn gray" id="gNew">あたらしい ゲーム</button></div>
+    </div>
+  </section>
+
+  <!-- すうじタッチ -->
+  <section class="panel" id="p-touch" role="tabpanel">
+    <div class="card">
+      <h2 class="title">👆 すうじタッチ</h2>
+      <div class="scores">
+        <div class="score"><small>タイム</small><b id="tTime">0.0</b></div>
+        <div class="score"><small>つぎ</small><b id="tNext">1</b></div>
+        <div class="score"><small>ベスト</small><b id="tBest">-</b></div>
+      </div>
+      <div class="tgrid" id="tGrid"></div>
+      <div class="row" style="margin-top:14px"><button class="btn blu" id="tNew">シャッフル</button></div>
+      <p class="hint">1から25まで じゅんばんに タッチ！ さいそくタイムを めざそう</p>
+    </div>
+  </section>
+
+</main>
+
+<script>
+"use strict";
+
+/* ===== Store: localStorage 安全ラッパ ===== */
+var Store = {
+  get: function(k, d){ try{ var v = localStorage.getItem(k); return v === null ? d : v; }catch(e){ return d; } },
+  set: function(k, v){ try{ localStorage.setItem(k, v); }catch(e){} }
+};
+var $  = function(s){ return document.querySelector(s); };
+var $$ = function(s){ return Array.prototype.slice.call(document.querySelectorAll(s)); };
+var pad = function(n, w){ n = String(n); while(n.length < (w||2)) n = "0" + n; return n; };
+
+/* ===== Tabs ===== */
+var Tabs = {
+  activate: function(id){
+    $$(".tab").forEach(function(t){ t.setAttribute("aria-selected", t.dataset.tab === id ? "true" : "false"); });
+    $$(".panel").forEach(function(p){ p.classList.toggle("active", p.id === "p-" + id); });
+    Store.set("kiichi.tab", id);
+    var btn = document.querySelector('.tab[data-tab="' + id + '"]');
+    if (btn && btn.scrollIntoView) btn.scrollIntoView({block:"nearest", inline:"center", behavior:"smooth"});
+    if (id === "puzzle" && Puzzle.ready) Puzzle.draw();
+  }
+};
+$$(".tab").forEach(function(t){ t.addEventListener("click", function(){ Tabs.activate(t.dataset.tab); }); });
+
+/* ===== とけい ===== */
+(function(){
+  var ticks = $("#ticks"), nums = $("#nums"), i, a, x1, y1, x2, y2, tx, ty, el;
+  for (i = 0; i < 60; i++){
+    a = i * 6 * Math.PI / 180;
+    var long = (i % 5 === 0);
+    x1 = 100 + Math.sin(a) * (long ? 82 : 86); y1 = 100 - Math.cos(a) * (long ? 82 : 86);
+    x2 = 100 + Math.sin(a) * 90;               y2 = 100 - Math.cos(a) * 90;
+    el = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    el.setAttribute("x1", x1.toFixed(1)); el.setAttribute("y1", y1.toFixed(1));
+    el.setAttribute("x2", x2.toFixed(1)); el.setAttribute("y2", y2.toFixed(1));
+    el.setAttribute("stroke", long ? "#ffc93c" : "#f0e2ce");
+    el.setAttribute("stroke-width", long ? 3 : 1.5);
+    ticks.appendChild(el);
+  }
+  for (i = 1; i <= 12; i++){
+    a = i * 30 * Math.PI / 180;
+    tx = 100 + Math.sin(a) * 68; ty = 100 - Math.cos(a) * 68;
+    el = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    el.setAttribute("x", tx.toFixed(1)); el.setAttribute("y", (ty + 6).toFixed(1));
+    el.setAttribute("text-anchor", "middle");
+    el.setAttribute("font-size", "17"); el.setAttribute("font-weight", "800"); el.setAttribute("fill", "#3d312b");
+    el.textContent = i;
+    nums.appendChild(el);
+  }
+  var W = ["日","月","火","水","木","金","土"];
+  function tick(){
+    var d = new Date(), h = d.getHours(), m = d.getMinutes(), s = d.getSeconds(), ms = d.getMilliseconds();
+    var sd = (s + ms / 1000) * 6, md = m * 6 + s * 0.1, hd = (h % 12) * 30 + m * 0.5;
+    $("#sHand").setAttribute("transform", "rotate(" + sd + " 100 100)");
+    $("#mHand").setAttribute("transform", "rotate(" + md + " 100 100)");
+    $("#hHand").setAttribute("transform", "rotate(" + hd + " 100 100)");
+    $("#dig").textContent = pad(h) + ":" + pad(m) + ":" + pad(s);
+    $("#dateline").textContent = d.getFullYear() + "年" + (d.getMonth() + 1) + "月" + d.getDate() + "日（" + W[d.getDay()] + "）";
+    var ampm = h < 12 ? "ごぜん" : "ごご", h12 = h % 12 === 0 ? 12 : h % 12;
+    $("#yomi").textContent = ampm + " " + h12 + "じ " + (m === 0 ? "ちょうど" : m + "ふん");
+    requestAnimationFrame(tick);
+  }
+  tick();
+})();
+
+/* ===== カレンダー ===== */
+var Cal = (function(){
+  var cur = new Date(), sel = null;
+  var W = ["日","月","火","水","木","金","土"];
+  function midnight(d){ return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+  function render(){
+    var y = cur.getFullYear(), m = cur.getMonth();
+    $("#ym").textContent = y + "年 " + (m + 1) + "月";
+    var first = new Date(y, m, 1), start = new Date(y, m, 1 - first.getDay());
+    var today = midnight(new Date()), body = $("#calBody"), html = "", i, w;
+    for (w = 0; w < 6; w++){
+      html += "<tr>";
+      for (i = 0; i < 7; i++){
+        var d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + w * 7 + i);
+        var cls = "day" + (i === 0 ? " sun" : i === 6 ? " sat" : "");
+        if (d.getMonth() !== m) cls += " other";
+        if (d.getTime() === today.getTime()) cls += " today";
+        if (sel && d.getTime() === sel) cls += " sel";
+        html += '<td><button class="' + cls + '" data-t="' + d.getTime() + '">' + d.getDate() + "</button></td>";
+      }
+      html += "</tr>";
+    }
+    body.innerHTML = html;
+  }
+  $("#calBody").addEventListener("click", function(e){
+    var b = e.target.closest(".day"); if (!b) return;
+    sel = Number(b.dataset.t);
+    var d = new Date(sel), today = midnight(new Date());
+    var diff = Math.round((sel - today.getTime()) / 86400000);
+    var when = diff === 0 ? "きょうだよ！" : diff > 0 ? "きょうから " + diff + "日あと" : "きょうから " + (-diff) + "日まえ";
+    $("#calInfo").textContent = (d.getMonth() + 1) + "月" + d.getDate() + "日（" + W[d.getDay()] + "）… " + when;
+    render();
+  });
+  $("#prevM").addEventListener("click", function(){ cur = new Date(cur.getFullYear(), cur.getMonth() - 1, 1); render(); });
+  $("#nextM").addEventListener("click", function(){ cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1); render(); });
+  $("#todayBtn").addEventListener("click", function(){ cur = new Date(); sel = null; $("#calInfo").textContent = ""; render(); });
+  render();
+  return { render: render };
+})();
+
+/* ===== でんたく ===== */
+(function(){
+  var cur = "0", prev = null, op = null, fresh = true, err = false;
+  var SYM = { "+":"＋", "-":"−", "*":"×", "/":"÷" };
+  function show(){
+    $("#calcMain").textContent = err ? "エラー" : cur;
+    $("#calcSub").innerHTML = (prev !== null && op) ? (prev + " " + SYM[op]) : "&nbsp;";
+  }
+  function round(x){ return Math.round(x * 1e8) / 1e8; }
+  function calc(a, b, o){
+    if (o === "+") return a + b;
+    if (o === "-") return a - b;
+    if (o === "*") return a * b;
+    if (b === 0) { err = true; return 0; }
+    return a / b;
+  }
+  function digit(k){
+    if (err) return;
+    if (fresh){ cur = (k === "." ? "0." : k); fresh = false; }
+    else {
+      if (k === "." && cur.indexOf(".") >= 0) return;
+      if (cur.replace("-","").replace(".","").length >= 12) return;
+      cur = (cur === "0" && k !== ".") ? k : cur + k;
+    }
+    show();
+  }
+  function setOp(o){
+    if (err) return;
+    if (prev !== null && op && !fresh){ doEq(true); if (err){ show(); return; } }
+    else { prev = cur; }
+    op = o; fresh = true; show();
+  }
+  function doEq(keep){
+    if (err || prev === null || !op) return;
+    var r = calc(parseFloat(prev), parseFloat(cur), op);
+    cur = err ? "0" : String(round(r));
+    if (!keep){ prev = null; op = null; }
+    else { prev = cur; }
+    fresh = true; show();
+  }
+  function press(k){
+    if (k === "C"){ cur = "0"; prev = null; op = null; fresh = true; err = false; show(); return; }
+    if (err) return;
+    if (k === "back"){ cur = cur.length > 1 ? cur.slice(0, -1) : "0"; if (cur === "-") cur = "0"; show(); return; }
+    if (k === "sign"){ cur = (cur.charAt(0) === "-") ? cur.slice(1) : (cur === "0" ? cur : "-" + cur); show(); return; }
+    if (k === "="){ doEq(false); return; }
+    if ("+-*/".indexOf(k) >= 0 && k.length === 1){ setOp(k); return; }
+    digit(k);
+  }
+  $("#keys").addEventListener("click", function(e){
+    var b = e.target.closest(".key"); if (b) press(b.dataset.k);
+  });
+  document.addEventListener("keydown", function(e){
+    if (!$("#p-calc").classList.contains("active")) return;
+    var k = e.key;
+    if (/^[0-9.]$/.test(k)) press(k);
+    else if ("+-*/".indexOf(k) >= 0 && k.length === 1) press(k);
+    else if (k === "Enter" || k === "=") { e.preventDefault(); press("="); }
+    else if (k === "Backspace") { e.preventDefault(); press("back"); }
+    else if (k === "Escape") press("C");
+    else return;
+  });
+  show();
+})();
+
+/* ===== ストップウォッチ ===== */
+(function(){
+  var base = 0, acc = 0, running = false, raf = null, lapLast = 0, lapNo = 0, started = false;
+  function fmt(ms){
+    var cs = Math.floor(ms / 10), s = Math.floor(cs / 100), m = Math.floor(s / 60);
+    return pad(m) + ":" + pad(s % 60) + "." + pad(cs % 100);
+  }
+  function now(){ return running ? acc + (Date.now() - base) : acc; }
+  function loop(){ $("#swTime").textContent = fmt(now()); if (running) raf = requestAnimationFrame(loop); }
+  $("#swStart").addEventListener("click", function(){
+    if (running){ acc = now(); running = false; this.textContent = "スタート"; this.classList.remove("pnk"); this.classList.add("grn"); cancelAnimationFrame(raf); loop(); }
+    else { base = Date.now(); running = true; started = true; this.textContent = "ストップ"; this.classList.remove("grn"); this.classList.add("pnk"); loop(); }
+  });
+  $("#swLap").addEventListener("click", function(){
+    var t = now(); if (!started) return; // 一度もスタートしていないときだけ無視
+    lapNo++;
+    var li = document.createElement("li");
+    li.innerHTML = "<span>ラップ " + lapNo + "</span><span>" + fmt(t - lapLast) + " / " + fmt(t) + "</span>";
+    $("#laps").insertBefore(li, $("#laps").firstChild);
+    lapLast = t;
+  });
+  $("#swReset").addEventListener("click", function(){
+    running = false; started = false; acc = 0; lapLast = 0; lapNo = 0; cancelAnimationFrame(raf);
+    $("#swTime").textContent = fmt(0); $("#laps").innerHTML = "";
+    var b = $("#swStart"); b.textContent = "スタート"; b.classList.remove("pnk"); b.classList.add("grn");
+  });
+  $("#swTime").textContent = fmt(0);
+})();
+
+/* ===== 1024パズル ===== */
+var Puzzle = (function(){
+  var N = 4, grid = [], score = 0, best = Number(Store.get("kiichi.puzzle.best", 0)) || 0, won = false, over = false, ready = false;
+  var board = $("#board"), tiles = [];
+  function empty(){ var r = []; for (var i = 0; i < N * N; i++) if (!grid[i]) r.push(i); return r; }
+  function spawn(){
+    var e = empty(); if (!e.length) return null;
+    var i = e[Math.floor(Math.random() * e.length)];
+    grid[i] = Math.random() < 0.9 ? 2 : 4;
+    return i;
+  }
+  function draw(newIdx){
+    tiles.forEach(function(t){ t.remove(); }); tiles = [];
+    var w = board.clientWidth; if (!w) return;
+    var pad2 = 8, gap = 8, size = (w - pad2 * 2 - gap * 3) / 4;
+    for (var i = 0; i < N * N; i++){
+      if (!grid[i]) continue;
+      var r = Math.floor(i / N), c = i % N, v = grid[i];
+      var t = document.createElement("div");
+      t.className = "tile t" + (v > 2048 ? 2048 : v) + (i === newIdx ? " pop" : "");
+      t.style.width = t.style.height = size + "px";
+      t.style.left = (pad2 + c * (size + gap)) + "px";
+      t.style.top  = (pad2 + r * (size + gap)) + "px";
+      t.style.fontSize = (v >= 1000 ? size * 0.30 : v >= 100 ? size * 0.36 : size * 0.44) + "px";
+      t.textContent = v;
+      board.appendChild(t); tiles.push(t);
+    }
+    $("#pScore").textContent = score;
+    $("#pBest").textContent = best;
+  }
+  function slide(line){
+    var a = line.filter(function(v){ return v; }), out = [], i = 0;
+    while (i < a.length){
+      if (i + 1 < a.length && a[i] === a[i + 1]){ var v = a[i] * 2; out.push(v); score += v; if (v >= 1024 && !won){ won = true; setTimeout(function(){ showOver("🎉 1024 たっせい！", true); }, 200); } i += 2; }
+      else { out.push(a[i]); i++; }
+    }
+    while (out.length < N) out.push(0);
+    return out;
+  }
+  function lineIdx(dir, k){
+    var idx = [], i;
+    for (i = 0; i < N; i++){
+      if (dir === "left")  idx.push(k * N + i);
+      if (dir === "right") idx.push(k * N + (N - 1 - i));
+      if (dir === "up")    idx.push(i * N + k);
+      if (dir === "down")  idx.push((N - 1 - i) * N + k);
+    }
+    return idx;
+  }
+  function move(dir){
+    if (over) return;
+    if (!$("#pOver").hidden) return; // オーバーレイ表示中は盤面を動かさない
+    var moved = false, k, idx, before, after, i;
+    for (k = 0; k < N; k++){
+      idx = lineIdx(dir, k);
+      before = idx.map(function(j){ return grid[j] || 0; });
+      after = slide(before);
+      for (i = 0; i < N; i++){ if (before[i] !== after[i]) moved = true; grid[idx[i]] = after[i]; }
+    }
+    if (!moved) return;
+    if (score > best){ best = score; Store.set("kiichi.puzzle.best", best); }
+    var n = spawn();
+    draw(n);
+    if (!canMove()){ over = true; setTimeout(function(){ showOver("おしまい！ スコア " + score); }, 250); }
+  }
+  function canMove(){
+    if (empty().length) return true;
+    for (var r = 0; r < N; r++) for (var c = 0; c < N; c++){
+      var v = grid[r * N + c];
+      if (c + 1 < N && grid[r * N + c + 1] === v) return true;
+      if (r + 1 < N && grid[(r + 1) * N + c] === v) return true;
+    }
+    return false;
+  }
+  function showOver(msg, canCont){
+    $("#pOverMsg").textContent = msg;
+    $("#pCont").hidden = !canCont;
+    $("#pOver").hidden = false;
+  }
+  function newGame(){
+    grid = new Array(N * N).fill(0); score = 0; won = false; over = false;
+    $("#pOver").hidden = true;
+    spawn(); spawn(); draw(); ready = true;
+  }
+  document.addEventListener("keydown", function(e){
+    if (!$("#p-puzzle").classList.contains("active")) return;
+    var m = { ArrowLeft:"left", ArrowRight:"right", ArrowUp:"up", ArrowDown:"down", a:"left", d:"right", w:"up", s:"down", A:"left", D:"right", W:"up", S:"down" }[e.key];
+    if (m){ e.preventDefault(); move(m); }
+  });
+  var sx = 0, sy = 0;
+  board.addEventListener("touchstart", function(e){ var t = e.changedTouches[0]; sx = t.clientX; sy = t.clientY; }, {passive:true});
+  board.addEventListener("touchmove", function(e){ e.preventDefault(); }, {passive:false});
+  board.addEventListener("touchend", function(e){
+    var t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
+    move(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up"));
+  });
+  $("#pNew").addEventListener("click", newGame);
+  $("#pOverBtn").addEventListener("click", newGame);
+  $("#pCont").addEventListener("click", function(){ $("#pOver").hidden = true; });
+  window.addEventListener("resize", function(){ if (ready) draw(); });
+  newGame();
+  return { draw: function(){ draw(); }, get ready(){ return ready; } };
+})();
+
+/* ===== けいさんチャレンジ ===== */
+(function(){
+  var mode = "add", level = 1, qi = 0, correct = 0, t0 = 0, timer = null, ans = 0, locked = false;
+  var TOTAL = 10, OPS = { add:"＋", sub:"−", mul:"×", div:"÷" };
+  var rnd = function(a, b){ return a + Math.floor(Math.random() * (b - a + 1)); };
+  $("#qMode").addEventListener("click", function(e){
+    var c = e.target.closest(".chip"); if (!c) return;
+    mode = c.dataset.m;
+    $$("#qMode .chip").forEach(function(x){ x.setAttribute("aria-pressed", x === c ? "true" : "false"); });
+  });
+  $("#qLevel").addEventListener("click", function(e){
+    var c = e.target.closest(".chip"); if (!c) return;
+    level = Number(c.dataset.l);
+    $$("#qLevel .chip").forEach(function(x){ x.setAttribute("aria-pressed", x === c ? "true" : "false"); });
+  });
+  function make(){
+    var m = mode === "mix" ? ["add","sub","mul","div"][rnd(0,3)] : mode, a, b, r;
+    if (m === "add"){ var hi = level === 1 ? 10 : level === 2 ? 50 : 200; a = rnd(1, hi); b = rnd(1, hi); r = a + b; }
+    else if (m === "sub"){ var h2 = level === 1 ? 10 : level === 2 ? 50 : 200; a = rnd(1, h2); b = rnd(1, h2); if (b > a){ var t = a; a = b; b = t; } r = a - b; }
+    else if (m === "mul"){
+      if (level === 1){ a = rnd(1,9); b = rnd(1,9); }
+      else if (level === 2){ a = rnd(2,12); b = rnd(2,9); }
+      else { a = rnd(11,29); b = rnd(3,9); }
+      r = a * b;
+    } else {
+      var q = level === 1 ? rnd(1,9) : level === 2 ? rnd(2,12) : rnd(3,20);
+      b = level === 1 ? rnd(1,9) : rnd(2,9);
+      a = q * b; r = q;
+    }
+    return { text: a + " " + OPS[m] + " " + b + " = ?", ans: r };
+  }
+  function choices(r){
+    var set = [r], tries = 0;
+    while (set.length < 4 && tries < 60){
+      tries++;
+      var d = [1,2,3,5,10][rnd(0,4)] * (Math.random() < 0.5 ? -1 : 1);
+      var v = r + d;
+      if (v >= 0 && set.indexOf(v) < 0) set.push(v);
+    }
+    while (set.length < 4) set.push(r + set.length);
+    for (var i = set.length - 1; i > 0; i--){ var j = rnd(0, i), tmp = set[i]; set[i] = set[j]; set[j] = tmp; }
+    return set;
+  }
+  function nextQ(){
+    if (qi >= TOTAL) return finish();
+    locked = false;
+    var q = make(); ans = q.ans;
+    $("#qText").textContent = q.text;
+    $("#qCount").textContent = (qi + 1) + " / " + TOTAL + "もん";
+    $("#qProg").style.width = (qi / TOTAL * 100) + "%";
+    $("#qJudge").textContent = "";
+    var box = $("#qChoices"); box.innerHTML = "";
+    choices(ans).forEach(function(v){
+      var b = document.createElement("button");
+      b.className = "choice"; b.textContent = v; b.dataset.v = v;
+      box.appendChild(b);
+    });
+  }
+  $("#qChoices").addEventListener("click", function(e){
+    var b = e.target.closest(".choice"); if (!b || locked) return;
+    locked = true;
+    var v = Number(b.dataset.v), ok = v === ans;
+    if (ok){ correct++; b.classList.add("ok"); $("#qJudge").textContent = "⭕ せいかい！"; }
+    else {
+      b.classList.add("ng");
+      $$("#qChoices .choice").forEach(function(x){ if (Number(x.dataset.v) === ans) x.classList.add("ok"); });
+      $("#qJudge").textContent = "❌ こたえは " + ans;
+    }
+    qi++;
+    setTimeout(nextQ, ok ? 600 : 1100);
+  });
+  function finish(){
+    clearInterval(timer);
+    var sec = Math.round((Date.now() - t0) / 1000);
+    $("#quizPlay").style.display = "none"; $("#quizResult").style.display = "";
+    var stars = correct >= 10 ? "⭐⭐⭐" : correct >= 8 ? "⭐⭐" : correct >= 5 ? "⭐" : "💪";
+    $("#qStars").textContent = stars;
+    $("#qScore").textContent = correct + " / " + TOTAL + " もん せいかい";
+    $("#qDetail").textContent = "かかった じかん： " + sec + "びょう" + (correct === TOTAL ? " ／ ぜんもん せいかい すごい！" : " ／ もういちど ちょうせん してみよう");
+    $("#qLast").textContent = "まえのきろく： " + correct + "/" + TOTAL + "もん（" + sec + "びょう）";
+  }
+  function start(){
+    qi = 0; correct = 0; t0 = Date.now();
+    $("#quizSetup").style.display = "none"; $("#quizResult").style.display = "none"; $("#quizPlay").style.display = "";
+    clearInterval(timer);
+    timer = setInterval(function(){ $("#qTimer").textContent = Math.round((Date.now() - t0) / 1000) + "びょう"; }, 250);
+    nextQ();
+  }
+  $("#qStart").addEventListener("click", start);
+  $("#qAgain").addEventListener("click", start);
+  $("#qBack").addEventListener("click", function(){
+    $("#quizResult").style.display = "none"; $("#quizSetup").style.display = "";
+  });
+})();
+
+/* ===== かずあて ===== */
+(function(){
+  var secret = 0, tries = 0;
+  function newGame(){
+    secret = 1 + Math.floor(Math.random() * 100); tries = 0;
+    $("#guessMsg").textContent = "1〜100の かずを いれて「こたえる」を おしてね";
+    $("#guessMsg").style.color = "";
+    $("#guessLog").innerHTML = ""; $("#gInput").value = ""; $("#gInput").disabled = false;
+    $("#gGo").disabled = false;
+  }
+  function check(){
+    var v = parseInt($("#gInput").value, 10);
+    if (isNaN(v) || v < 1 || v > 100){ $("#guessMsg").textContent = "1〜100の かずを いれてね"; $("#guessMsg").style.color = "var(--red)"; return; }
+    tries++;
+    var mark = v === secret ? "🎯" : v < secret ? "⬆️" : "⬇️";
+    var s = document.createElement("span"); s.textContent = mark + " " + v;
+    $("#guessLog").insertBefore(s, $("#guessLog").firstChild);
+    if (v === secret){
+      var judge = tries <= 5 ? "てんさい！" : tries <= 8 ? "じょうず！" : "クリア！";
+      $("#guessMsg").textContent = "🎉 せいかい！ " + secret + " だったよ（" + tries + "かいめ）" + judge;
+      $("#guessMsg").style.color = "var(--grn)";
+      $("#gInput").disabled = true; $("#gGo").disabled = true;
+    } else {
+      $("#guessMsg").textContent = v < secret ? "⬆️ もっと 大きい かずだよ" : "⬇️ もっと 小さい かずだよ";
+      $("#guessMsg").style.color = "var(--pnk)";
+      $("#gInput").value = ""; $("#gInput").focus();
+    }
+  }
+  $("#gGo").addEventListener("click", check);
+  $("#gInput").addEventListener("keydown", function(e){ if (e.key === "Enter") check(); });
+  $("#gNew").addEventListener("click", newGame);
+  newGame();
+})();
+
+/* ===== すうじタッチ ===== */
+(function(){
+  var next = 1, t0 = 0, timer = null;
+  var rawBest = Store.get("kiichi.touch.best", null);
+  var best = (rawBest !== null && !isNaN(Number(rawBest))) ? Number(rawBest) : null;
+  function showBest(){ $("#tBest").textContent = (best === null) ? "-" : best.toFixed(1); }
+  function newGame(){
+    clearInterval(timer); timer = null; next = 1; t0 = 0;
+    $("#tTime").textContent = "0.0"; $("#tNext").textContent = "1";
+    var a = [], i;
+    for (i = 1; i <= 25; i++) a.push(i);
+    for (i = a.length - 1; i > 0; i--){ var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; }
+    var g = $("#tGrid"); g.innerHTML = "";
+    a.forEach(function(n){
+      var b = document.createElement("button");
+      b.className = "tcell"; b.textContent = n; b.dataset.n = n;
+      g.appendChild(b);
+    });
+    showBest();
+  }
+  $("#tGrid").addEventListener("click", function(e){
+    var b = e.target.closest(".tcell"); if (!b || b.classList.contains("done")) return;
+    var n = Number(b.dataset.n);
+    if (n !== next){
+      b.classList.remove("bad"); void b.offsetWidth; b.classList.add("bad");
+      return;
+    }
+    if (next === 1){
+      t0 = Date.now();
+      timer = setInterval(function(){ $("#tTime").textContent = ((Date.now() - t0) / 1000).toFixed(1); }, 100);
+    }
+    b.classList.add("done");
+    next++;
+    $("#tNext").textContent = next > 25 ? "🎉" : next;
+    if (next > 25){
+      clearInterval(timer); timer = null;
+      var sec = (Date.now() - t0) / 1000;
+      $("#tTime").textContent = sec.toFixed(1);
+      if (best === null || sec < best){ best = sec; Store.set("kiichi.touch.best", best); }
+      showBest();
+    }
+  });
+  $("#tNew").addEventListener("click", newGame);
+  newGame();
+})();
+
+/* ===== 起動時: 前回のタブを復元 ===== */
+(function(){
+  var saved = Store.get("kiichi.tab", "clock");
+  if (document.querySelector('.tab[data-tab="' + saved + '"]')) Tabs.activate(saved);
+})();
+</script>
+</body>
+</html>

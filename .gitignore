@@ -1,0 +1,9 @@
+# ビルド生成物（node tools/build-artifact.js で index.html から再生成できる）
+dist/
+
+# OS / エディタ
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
+node_modules/
