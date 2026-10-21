@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ライフパスジェネレーター</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Shippori+Mincho:wght@600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f0e8; --panel: #fffdf8; --line: #e0d8c8; --fg: #2a2520; --sub: #857a68;
+    --accent: #8e1b1b; --accent-soft: rgba(142,27,27,.1); --gold: #b8862a;
+  }
+  body.sys-coc { --accent: #2f5d4a; --accent-soft: rgba(47,93,74,.12); }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font-family: "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 24px 16px 60px; }
+  h1 { font: 800 26px/1.2 "Shippori Mincho", serif; margin: 0 0 4px; letter-spacing: .08em; }
+  h1 small { display: block; font: 700 11px/1 "Noto Sans JP", sans-serif; letter-spacing: .4em; color: var(--accent); margin-bottom: 8px; }
+  .lead { color: var(--sub); font-size: 13px; margin: 0 0 20px; line-height: 1.7; }
+
+  .box { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
+  .box h2 { font-size: 12px; letter-spacing: .15em; color: var(--sub); margin: 0 0 10px; font-weight: 700; }
+  .row { display: flex; flex-wrap: wrap; gap: 16px 28px; }
+  .grp { display: flex; flex-direction: column; gap: 6px; }
+  .grp > span { font-size: 12px; color: var(--sub); font-weight: 700; }
+  .seg { display: flex; flex-wrap: wrap; gap: 6px; }
+  .seg label {
+    border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; font-size: 13px; cursor: pointer;
+    user-select: none; background: #fff; transition: .12s;
+  }
+  .seg input { display: none; }
+  .seg label:has(input:checked) { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
+  input[type=text] { background: #fff; color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; font: inherit; font-size: 14px; min-width: 14em; }
+  .sys-sg .coc-only { display: none !important; }
+  .muted { color: var(--sub); font-size: 12px; }
+
+  .actions { display: flex; gap: 10px; margin: 18px 0; flex-wrap: wrap; }
+  button.main {
+    background: var(--accent); color: #fff; border: 0; border-radius: 8px; padding: 12px 28px;
+    font: 700 16px "Noto Sans JP", sans-serif; cursor: pointer; letter-spacing: .1em;
+  }
+  button.sub { background: #e8e1d3; color: var(--fg); border: 0; border-radius: 8px; padding: 12px 16px; font: 14px "Noto Sans JP", sans-serif; cursor: pointer; }
+
+  .sheet { background: var(--panel); border: 1px solid var(--line); border-top: 4px solid var(--accent); border-radius: 10px; padding: 16px 18px 10px; }
+  .sheet .cname { font: 800 24px/1.4 "Shippori Mincho", "Yu Mincho", serif; letter-spacing: .06em; margin-bottom: 6px; }
+  .sheet .cname span { font: 700 11px "Noto Sans JP", sans-serif; color: var(--accent); letter-spacing: .3em; display: block; }
+  .lp { display: grid; grid-template-columns: 9.5em 1fr auto; gap: 0 12px; align-items: center; padding: 9px 0; border-top: 1px dashed var(--line); }
+  .lp .k { font-size: 12px; color: var(--sub); font-weight: 700; letter-spacing: .05em; }
+  .lp .v { font: 700 16px/1.6 "Shippori Mincho", "Yu Mincho", serif; overflow-wrap: anywhere; }
+  .lp .v small { font: 12px "Noto Sans JP", sans-serif; color: var(--sub); margin-left: 6px; }
+  .lp.locked .v { background: var(--accent-soft); box-shadow: inset 0 -2px 0 var(--accent); border-radius: 4px; padding: 0 4px; }
+  .lp .tools { display: flex; gap: 4px; }
+  .tools button { background: none; border: 1px solid var(--line); color: var(--sub); border-radius: 6px; font: 12px "Noto Sans JP", sans-serif; padding: 4px 9px; cursor: pointer; white-space: nowrap; }
+  .tools button:hover { color: var(--fg); border-color: var(--sub); }
+  .tools button.on { color: var(--accent); border-color: var(--accent); font-weight: 700; }
+  .sheet .foot { display: flex; gap: 6px; justify-content: flex-end; padding: 10px 0 4px; border-top: 1px dashed var(--line); }
+  .sheet .foot button.on { color: var(--gold); border-color: var(--gold); }
+
+  @media (max-width: 560px) {
+    .lp { grid-template-columns: 1fr auto; }
+    .lp .k { grid-column: 1 / -1; }
+  }
+
+  .favs { margin-top: 28px; }
+  .favs h2 { font: 800 18px "Shippori Mincho", serif; margin: 0 0 10px; }
+  .fav-list { display: flex; flex-direction: column; gap: 6px; }
+  .fav-row { display: flex; align-items: center; gap: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; }
+  .fav-row .txt { flex: 1; min-width: 0; font: 700 15px "Shippori Mincho", serif; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fav-row .txt span { font: 12px "Noto Sans JP", sans-serif; color: var(--sub); margin-left: 8px; }
+  .fav-row button { background: none; border: 0; color: var(--sub); cursor: pointer; font-size: 12px; white-space: nowrap; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+    background: #2a2520; color: #fff; padding: 8px 16px; border-radius: 999px; font-size: 13px; font-weight: 700;
+    opacity: 0; transition: opacity .2s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+  details.custom summary { cursor: pointer; font-size: 12px; color: var(--sub); letter-spacing: .15em; font-weight: 700; }
+  details.custom textarea {
+    width: 100%; min-height: 90px; margin-top: 8px; background: #fff; color: var(--fg); border: 1px solid var(--line);
+    border-radius: 6px; padding: 8px; font: 13px/1.6 "Noto Sans JP", monospace;
+  }
+</style>
+</head>
+<body class="sys-sg">
+<div class="wrap">
+  <h1><small>LIFE PATH GENERATOR</small>ライフパスジェネレーター</h1>
+  <p class="lead">キャラクターの生い立ちや人となりをランダムに決めます。項目の「固定」を押すと、その項目を残したまま ほかの項目だけ振り直せます。<br>表の中身はこのツールのオリジナルです（流派名・感情表はシノビガミのルールどおり）。</p>
+
+  <div class="box">
+    <div class="row">
+      <div class="grp"><span>システム</span>
+        <div class="seg" id="sys">
+          <label><input type="radio" name="sys" value="sg" checked>シノビガミ</label>
+          <label><input type="radio" name="sys" value="coc">クトゥルフ神話TRPG</label>
+        </div>
+      </div>
+      <div class="grp coc-only"><span>時代</span>
+        <div class="seg" id="era">
+          <label><input type="radio" name="era" value="modern" checked>現代</label>
+          <label><input type="radio" name="era" value="1920s">1920年代</label>
+        </div>
+      </div>
+      <div class="grp"><span>キャラクター名（省略可）</span>
+        <input type="text" id="cname" placeholder="例）万華 透">
+      </div>
+    </div>
+  </div>
+
+  <div class="box">
+    <details class="custom">
+      <summary>自分の表を追加する</summary>
+      <p class="muted">1行に1つずつ「項目名|内容|内容…」の形式で書いてください。いまの項目名と同じなら その表に追加、ちがう名前なら新しい項目になります。<br>例）性格|ねぼすけ|几帳面すぎる　　口ぐせ|「なるほどね」|「だいじょうぶ」</p>
+      <textarea id="custom" spellcheck="false"></textarea>
+    </details>
+  </div>
+
+  <div class="actions">
+    <button class="main" id="gen">🎲 生成</button>
+    <button class="sub" id="clearLock">固定を解除</button>
+  </div>
+
+  <div class="sheet" id="out"></div>
+
+  <section class="favs">
+    <h2>お気に入り</h2>
+    <div class="fav-list" id="favs"><p class="muted">★を押すとここに保存されます。</p></div>
+  </section>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   データ（オリジナル表）
+   ============================================================ */
+const L = s => s.trim().split(/\s*\n\s*|\s*／\s*/).filter(Boolean);
+
+const SG_EMOTION = [['共感', '不信'], ['友情', '怒り'], ['愛情', '妬み'], ['忠誠', '侮蔑'], ['憧憬', '劣等感'], ['狂信', '殺意']];
+
+const TABLES = {
+  sg: [
+    { key: 'school', label: '流派', pool: L('斜歯忍軍（はぐるまにんぐん）／鞍馬神流（くらまかむながれ）／ハグレモノ／比良坂機関（ひらさかきかん）／私立御斎学園（しりつおとぎがくえん）／隠忍の血統（おにのけっとう）') },
+    { key: 'cover', label: '表の顔', pool: L('高校生／中学生／大学生／会社員／刑事／教師／医師／看護師／神主／僧侶／古書店主／喫茶店のマスター／配達員／フリーター／政治家の秘書／研究者／新聞記者／芸能人／料理人／自衛官／探偵／職人／スポーツ選手／表の顔を持たない') },
+    { key: 'age', label: '年ごろ', pool: L('10代前半／10代後半／20代／30代／40代／50代以上／見た目と年齢が一致しない') },
+    { key: 'origin', label: '忍びになったきっかけ', pool: L(`生まれたときから忍びの家系だった
+命を救われた代わりに、忍びの道に入った
+家族を殺した仇を追うため
+才能を見出され、流派にスカウトされた
+偶然、忍びの戦いを目撃してしまった
+大きな借りを返すため
+自分から門を叩いた
+記憶がなく、気づけば忍びとして生きていた
+守りたい人がいた
+どうしても力が欲しかった
+流派に拾われた孤児だった
+先代の死で、その役目を継いだ`) },
+    { key: 'nature', label: '性格', pool: L('冷静沈着／熱血漢／皮肉屋／面倒見がいい／臆病だが誠実／享楽的／無口／礼儀正しい／気まぐれ／頑固／楽天家／完璧主義／人懐っこい／秘密主義／負けず嫌い／のんびり屋') },
+    { key: 'treasure', label: '大切なもの', pool: L('家族の写真／師匠の形見の刀／幼なじみ／自分の流派／平穏な日常／ある人との約束／古いお守り／飼っている猫／お金／名誉／自由／故郷／自分の忍法／仲間たち') },
+    { key: 'rival', label: '因縁の相手', pool: L('兄弟弟子／かつての恋人／師匠／仇である忍び／別の流派のライバル／自分を裏切った仲間／妖魔／自分と同じ顔をした誰か／実の親／恩人／流派の上層部／まだ見ぬ誰か') },
+    { key: 'wish', label: '秘めた願い', pool: L(`普通の生活を送りたい
+最強の忍びになりたい
+流派のあり方を変えたい
+ある人の仇を討ちたい
+失った記憶を取り戻したい
+死んだ人にもう一度会いたい
+一族の呪いを解きたい
+世界の真実を知りたい
+誰にも縛られずに生きたい
+大切な人を守り抜きたい`) },
+    { key: 'quirk', label: '癖・弱点', pool: L('甘いものに目がない／嘘が下手／高いところが苦手／動物に弱い／寝起きが悪い／方向音痴／涙もろい／約束を破れない／暗いところが苦手／機械オンチ／お酒に弱い／つい本名を名乗ってしまう') },
+    { key: 'emotion', label: '感情表（1D6）', gen: () => { const n = 1 + Math.floor(Math.random() * 6), [p, q] = SG_EMOTION[n - 1]; return { text: `${p}／${q}`, note: `出目 ${n}` }; } },
+  ],
+  coc: [
+    { key: 'job', label: '職業', pool: era => era === '1920s'
+      ? L('大学教授／私立探偵／新聞記者／医師／看護婦／警官／作家／学生／古物商／図書館司書／写真家／考古学者／弁護士／聖職者／ディレッタント（道楽者）／船乗り／飛行家／酒場の主人／退役軍人／芸術家／運転手／奇術師')
+      : L('大学教授／私立探偵／新聞記者／医師／看護師／警察官／作家／大学生／古物商／図書館司書／写真家／考古学者／弁護士／聖職者／会社員／エンジニア／動画配信者／自衛官／料理人／芸術家／タクシー運転手／オカルト研究家') },
+    { key: 'age', label: '年齢', gen: () => ({ text: (18 + Math.floor(Math.random() * 50)) + '歳' }) },
+    { key: 'home', label: '出身', pool: L('大きな都会／港町／山あいの村／海外／地元の名家／下町／学者の一家／転勤続きで各地を転々とした／孤児院／農家／宗教施設／軍人の一家') },
+    { key: 'look', label: '容姿', pool: L('背が高く ひょろりとしている／がっしりした体格／年より若く見える／鋭い目つき／いつも疲れた顔をしている／品のある身なり／派手な服装／目立つ傷跡がある／分厚い眼鏡をかけている／古びたコートを手放さない／小柄／声が大きい／いつも清潔感がある／くせ毛がはねている') },
+    { key: 'belief', label: '思想・信念', pool: L(`科学で説明できないものはない
+神の存在を信じている
+真実はいつも隠されている
+世の中は結局お金だ
+人はみんな根はいい人だ
+運命は自分で切り開くものだ
+知識こそが力だ
+家族が何より大事だ
+正義は貫くべきだ
+世の中は悪くなる一方だ
+占いや言い伝えを大事にしている
+動物の命も人と同じ重さだ`) },
+    { key: 'person', label: '重要な人物', pool: L('父親／母親／兄弟姉妹／恩師／幼なじみ／恋人／配偶者／子ども／命の恩人／ライバル／亡くなった友人／祖父母／仕事の相棒') },
+    { key: 'why', label: 'その人物が重要な理由', pool: L(`その人に大きな借りがある
+その人から大切なことを教わった
+その人を守りたい
+その人に認められたい
+その人を見返したい
+その人の秘密を知っている
+その人と約束を交わした
+その人に生きる意味をもらった`) },
+    { key: 'place', label: '意味のある場所', pool: L('母校／故郷の家／行きつけの喫茶店／教会や寺／図書館／海辺／病院／古い屋敷／墓地／いまの職場／山小屋／博物館') },
+    { key: 'item', label: '秘蔵の品', pool: era => L('祖父の懐中時計／古い日記／手書きの地図／お守り／壊れたカメラ／恋人からの手紙／年代物の万年筆／何の鍵かわからない鍵／子どものころのおもちゃ／一冊の古書／色あせた写真').concat(era === '1920s' ? ['祖母の形見のロケット', '戦場から持ち帰った勲章'] : ['スマートフォンに残る一枚の写真', '昔のゲーム機']) },
+    { key: 'trait', label: '特徴', pool: L('好奇心が強い／迷信深い／お酒が好き／几帳面／お人よし／皮肉屋／臆病／大胆不敵／話し好き／寡黙／食いしん坊／動物好き／読書家／賭け事が好き') },
+    { key: 'fear', label: '苦手なもの', pool: L('暗闇／深い水／虫／狭い場所／高い場所／鏡／人混み／病院／大きな犬／雷／血／人形') },
+  ],
+};
+
+/* ============================================================
+   状態
+   ============================================================ */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const val = id => document.querySelector(`#${id} input:checked`).value;
+const pick = a => a[Math.floor(Math.random() * a.length)];
+
+let result = {};   // key -> {text, note}
+let locks = {};    // key -> true
+let favs = [];
+
+function customTables() {
+  const map = new Map();
+  for (const line of $('custom').value.split('\n')) {
+    const parts = line.split('|').map(s => s.trim()).filter(Boolean);
+    if (parts.length < 2) continue;
+    const [label, ...items] = parts;
+    map.set(label, (map.get(label) || []).concat(items));
+  }
+  return map;
+}
+
+function tables() {
+  const sys = val('sys'), era = val('era'), custom = customTables();
+  const list = TABLES[sys].map(t => {
+    const base = t.gen ? null : (typeof t.pool === 'function' ? t.pool(era) : t.pool);
+    const extra = custom.get(t.label) || [];
+    custom.delete(t.label);
+    return { ...t, pool: base ? base.concat(extra) : null };
+  });
+  for (const [label, items] of custom) list.push({ key: 'c:' + label, label, pool: items });
+  return list;
+}
+
+function roll(t) { return t.gen ? t.gen() : { text: pick(t.pool) }; }
+
+function generate(onlyKey) {
+  const next = {};
+  for (const t of tables()) {
+    if (onlyKey ? t.key !== onlyKey && result[t.key] : locks[t.key] && result[t.key]) next[t.key] = result[t.key];
+    else next[t.key] = roll(t);
+  }
+  result = next;
+  render();
+}
+
+const sysName = () => val('sys') === 'sg' ? 'シノビガミ' : 'クトゥルフ神話TRPG' + (val('era') === '1920s' ? '（1920年代）' : '（現代）');
+function plain() {
+  const name = $('cname').value.trim();
+  return [`【ライフパス：${sysName()}】`, ...(name ? ['名前：' + name] : []),
+    ...tables().filter(t => result[t.key]).map(t => `${t.label}：${result[t.key].text}`)].join('\n');
+}
+const isFav = () => favs.some(f => f.text === plain());
+
+function render() {
+  const name = $('cname').value.trim();
+  $('out').innerHTML = `
+    <div class="cname"><span>${esc(sysName())}</span>${esc(name || '名もなき' + (val('sys') === 'sg' ? '忍び' : '探索者'))}</div>
+    ${tables().filter(t => result[t.key]).map(t => `
+      <div class="lp ${locks[t.key] ? 'locked' : ''}">
+        <div class="k">${esc(t.label)}</div>
+        <div class="v">${esc(result[t.key].text)}${result[t.key].note ? `<small>${esc(result[t.key].note)}</small>` : ''}</div>
+        <div class="tools">
+          <button data-reroll="${esc(t.key)}" title="この項目だけ振り直す">🎲</button>
+          <button data-lock="${esc(t.key)}" class="${locks[t.key] ? 'on' : ''}">${locks[t.key] ? '固定中' : '固定'}</button>
+        </div>
+      </div>`).join('')}
+    <div class="foot tools">
+      <button data-act="copy">テキストをコピー</button>
+      <button data-act="fav" class="${isFav() ? 'on' : ''}">${isFav() ? '★ 保存済み' : '☆ お気に入り'}</button>
+    </div>`;
+}
+
+function renderFavs() {
+  $('favs').innerHTML = favs.length
+    ? favs.map((f, i) => `<div class="fav-row"><div class="txt">${esc(f.title)}<span>${esc(f.sub)}</span></div><button data-fload="${i}">表示</button><button data-fcopy="${i}">コピー</button><button data-fdel="${i}">削除</button></div>`).join('')
+    : '<p class="muted">★を押すとここに保存されます。</p>';
+}
+
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 1200);
+}
+async function copy(text) {
+  try { await navigator.clipboard.writeText(text); toast('コピーしました'); }
+  catch (e) { prompt('コピーしてください', text); }
+}
+
+function save() {
+  try {
+    localStorage.setItem('trpg-lifepath-v1', JSON.stringify({
+      favs, custom: $('custom').value, sys: val('sys'), era: val('era'), name: $('cname').value,
+    }));
+  } catch (e) {}
+}
+function setRadio(id, v) { const r = document.querySelector(`#${id} input[value="${v}"]`); if (r) r.checked = true; }
+function applySys() {
+  document.body.classList.toggle('sys-sg', val('sys') === 'sg');
+  document.body.classList.toggle('sys-coc', val('sys') === 'coc');
+}
+
+(function init() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem('trpg-lifepath-v1')); } catch (e) {}
+  if (saved) {
+    favs = saved.favs || [];
+    $('custom').value = saved.custom || '';
+    $('cname').value = saved.name || '';
+    setRadio('sys', saved.sys); setRadio('era', saved.era);
+  }
+  applySys();
+
+  $('gen').addEventListener('click', () => generate());
+  $('clearLock').addEventListener('click', () => { locks = {}; render(); });
+  $('sys').addEventListener('change', () => { applySys(); locks = {}; result = {}; generate(); save(); });
+  $('era').addEventListener('change', () => { generate(); save(); });
+  $('cname').addEventListener('input', () => { render(); save(); });
+  $('custom').addEventListener('change', () => { generate(); save(); });
+
+  $('out').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.reroll) generate(b.dataset.reroll);
+    else if (b.dataset.lock) { locks[b.dataset.lock] = !locks[b.dataset.lock]; render(); }
+    else if (b.dataset.act === 'copy') copy(plain());
+    else if (b.dataset.act === 'fav') {
+      const text = plain(), idx = favs.findIndex(f => f.text === text);
+      if (idx >= 0) favs.splice(idx, 1);
+      else {
+        const first = tables().find(t => result[t.key]);
+        favs.unshift({ text, title: $('cname').value.trim() || (first ? result[first.key].text : 'ライフパス'), sub: sysName(),
+          sys: val('sys'), era: val('era'), name: $('cname').value, result: { ...result } });
+      }
+      render(); renderFavs(); save();
+    }
+  });
+  $('favs').addEventListener('click', e => {
+    const l = e.target.closest('[data-fload]'), c = e.target.closest('[data-fcopy]'), d = e.target.closest('[data-fdel]');
+    if (l) {
+      const f = favs[+l.dataset.fload];
+      setRadio('sys', f.sys); setRadio('era', f.era); applySys();
+      $('cname').value = f.name || ''; result = { ...f.result }; locks = {};
+      render(); save(); window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    if (c) copy(favs[+c.dataset.fcopy].text);
+    if (d) { favs.splice(+d.dataset.fdel, 1); renderFavs(); render(); save(); }
+  });
+
+  generate();
+  renderFavs();
+})();
+</script>
+</body>
+</html>

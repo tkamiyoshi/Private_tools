@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>コードネームジェネレーター</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Shippori+Mincho:wght@600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #121214; --panel: #1c1c20; --line: #2e2e34; --fg: #ecebe8; --sub: #9a9893;
+    --accent: #c8102e; --accent-soft: rgba(200,16,46,.15); --gold: #d4a73a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font-family: "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px 60px; }
+  h1 { font: 800 26px/1.2 "Shippori Mincho", serif; margin: 0 0 4px; letter-spacing: .05em; }
+  h1 small { display: block; font: 700 11px/1 "Noto Sans JP", sans-serif; letter-spacing: .4em; color: var(--accent); margin-bottom: 8px; }
+  .lead { color: var(--sub); font-size: 13px; margin: 0 0 20px; }
+
+  .box { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
+  .box h2 { font-size: 12px; letter-spacing: .15em; color: var(--sub); margin: 0 0 10px; font-weight: 700; }
+
+  .syn { display: flex; flex-wrap: wrap; gap: 6px; }
+  .syn label {
+    border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; font-size: 13px; cursor: pointer;
+    user-select: none; transition: .12s;
+  }
+  .syn input { display: none; }
+  .syn label:has(input:checked) { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
+
+  .opts { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; font-size: 13px; }
+  .opts select { background: #111; color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; font: inherit; }
+
+  .locks { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px; min-height: 30px; }
+  .lock-chip { background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 6px; padding: 3px 8px 3px 10px; display: inline-flex; gap: 8px; align-items: center; }
+  .lock-chip button { background: none; border: 0; color: var(--sub); cursor: pointer; font-size: 14px; padding: 0 2px; }
+  .muted { color: var(--sub); font-size: 12px; }
+
+  .actions { display: flex; gap: 10px; margin: 18px 0; flex-wrap: wrap; }
+  button.main {
+    background: var(--accent); color: #fff; border: 0; border-radius: 8px; padding: 12px 28px;
+    font: 700 16px "Noto Sans JP", sans-serif; cursor: pointer; letter-spacing: .1em;
+  }
+  button.sub { background: #2a2a30; color: var(--fg); border: 0; border-radius: 8px; padding: 12px 16px; font: 14px "Noto Sans JP", sans-serif; cursor: pointer; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; }
+  .item {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px 14px 10px;
+    position: relative; overflow: hidden;
+  }
+  .item::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); opacity: .7; }
+  .name { font: 800 22px/2.1 "Shippori Mincho", "Yu Mincho", serif; word-break: keep-all; overflow-wrap: anywhere; }
+  .name ruby rt { font: 400 10px "Noto Sans JP", sans-serif; color: var(--sub); letter-spacing: .08em; }
+  .part { cursor: pointer; border-radius: 4px; transition: background .12s; }
+  .part:hover { background: var(--accent-soft); }
+  .part.locked { background: var(--accent-soft); box-shadow: inset 0 -2px 0 var(--accent); }
+  .reading { font-size: 12px; color: var(--sub); letter-spacing: .05em; margin-top: 2px; }
+  .tools { display: flex; gap: 4px; justify-content: flex-end; margin-top: 8px; }
+  .tools button {
+    background: none; border: 1px solid var(--line); color: var(--sub); border-radius: 6px;
+    font: 12px "Noto Sans JP", sans-serif; padding: 4px 9px; cursor: pointer;
+  }
+  .tools button:hover { color: var(--fg); border-color: var(--sub); }
+  .tools button.on { color: var(--gold); border-color: var(--gold); }
+
+  .favs { margin-top: 28px; }
+  .favs h2 { font: 800 18px "Shippori Mincho", serif; margin: 0 0 10px; }
+  .fav-list { display: flex; flex-direction: column; gap: 6px; }
+  .fav-row { display: flex; align-items: center; gap: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; }
+  .fav-row .txt { flex: 1; font: 700 16px "Shippori Mincho", serif; }
+  .fav-row .txt span { font: 12px "Noto Sans JP", sans-serif; color: var(--sub); margin-left: 8px; }
+  .fav-row button { background: none; border: 0; color: var(--sub); cursor: pointer; font-size: 12px; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+    background: #fff; color: #111; padding: 8px 16px; border-radius: 999px; font-size: 13px; font-weight: 700;
+    opacity: 0; transition: opacity .2s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+  details.custom summary { cursor: pointer; font-size: 12px; color: var(--sub); letter-spacing: .15em; font-weight: 700; }
+  details.custom textarea {
+    width: 100%; min-height: 90px; margin-top: 8px; background: #111; color: var(--fg); border: 1px solid var(--line);
+    border-radius: 6px; padding: 8px; font: 13px/1.6 "Noto Sans JP", monospace;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1><small>DOUBLE CROSS 3rd</small>コードネームジェネレーター</h1>
+  <p class="lead">シンドロームを選んで「生成」。前半・後半をクリックすると固定され、残りだけ振り直せます。</p>
+
+  <div class="box">
+    <h2>シンドローム（複数選択可・未選択なら全部）</h2>
+    <div class="syn" id="syn"></div>
+  </div>
+
+  <div class="box">
+    <h2>オプション</h2>
+    <div class="opts">
+      <label>つなぎ方
+        <select id="joint">
+          <option value="mix">おまかせ</option>
+          <option value="no">「〜の〜」を優先</option>
+          <option value="naru">「〜なる〜」を優先</option>
+        </select>
+      </label>
+      <label>ルビの区切り
+        <select id="sep">
+          <option value="・">・（ナカグロ）</option>
+          <option value="">なし</option>
+          <option value=" ">スペース</option>
+        </select>
+      </label>
+      <label>生成数
+        <select id="count">
+          <option>6</option><option selected>12</option><option>24</option>
+        </select>
+      </label>
+    </div>
+  </div>
+
+  <div class="box">
+    <h2>固定中の単語</h2>
+    <div class="locks" id="locks"><span class="muted">なし（結果の前半・後半をクリックで固定）</span></div>
+  </div>
+
+  <div class="box">
+    <details class="custom">
+      <summary>自分の単語を追加する</summary>
+      <p class="muted">1行に1語。「前|漢字|ルビ」または「後|漢字|ルビ」の形式で書いてください。前半に置く語は「紅蓮の」「怒れる」のように、つなぎの言葉まで含めて書きます。<br>例）前|硝子の|グラス　　後|探偵|ディテクティヴ</p>
+      <textarea id="custom" spellcheck="false"></textarea>
+    </details>
+  </div>
+
+  <div class="actions">
+    <button class="main" id="gen">生成</button>
+    <button class="sub" id="clearLock">固定を解除</button>
+  </div>
+
+  <div class="grid" id="out"></div>
+
+  <section class="favs">
+    <h2>お気に入り</h2>
+    <div class="fav-list" id="favs"><p class="muted">★を押すとここに保存されます。</p></div>
+  </section>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   単語データ
+   前半：漢字|ルビ|種別   種別 a=そのまま前置できる形 / n=名詞（の・なる を付ける）
+   後半：漢字|ルビ
+   ============================================================ */
+const SYNDROMES = {
+  G:  { name: '共通' },
+  AH: { name: 'エンジェルハイロゥ' },
+  BA: { name: 'バロール' },
+  BD: { name: 'ブラックドッグ' },
+  BS: { name: 'ブラム＝ストーカー' },
+  KY: { name: 'キュマイラ' },
+  EX: { name: 'エグザイル' },
+  HA: { name: 'ハヌマーン' },
+  MO: { name: 'モルフェウス' },
+  NE: { name: 'ノイマン' },
+  OR: { name: 'オルクス' },
+  SA: { name: 'サラマンダー' },
+  SO: { name: 'ソラリス' },
+  UR: { name: 'ウロボロス' },
+  RB: { name: 'レネゲイドビーイング' },
+};
+
+const MODS = {
+  G: `怒れる|レイジング|a
+素樸なる|プリミティブ|a
+嘆きの|ラメント|a
+名も無き|ネームレス|a
+孤高なる|ソリタリー|a
+砕けた|ブロークン|a
+偽りの|フェイク|a
+終わらない|エンドレス|a
+約束された|プロミスド|a
+眠れる|スリーピング|a
+彷徨える|ワンダリング|a
+忘れられた|フォーゴトン|a
+歪んだ|ディストーテッド|a
+祈る|プレイング|a
+微笑む|スマイリング|a
+静かなる|サイレント|a
+最後の|ラスト|a
+無垢なる|イノセント|a
+傷だらけの|スカード|a
+虚ろなる|ホロウ|a
+優しき|ジェントル|a
+気高き|ノーブル|a
+黄昏|トワイライト|n
+追憶|リメンブランス|n
+深淵|アビス|n
+運命|フェイト|n
+境界|ボーダー|n
+夜明け|ドーン|n
+白銀|シルバー|n
+漆黒|ノワール|n
+蒼穹|アズール|n
+鋼|スティール|n
+灰燼|アッシュ|n
+永劫|エターナル|n`,
+  AH: `閃光|フラッシュ|n
+煌めく|グリッター|a
+光輝|ルミナス|n
+幻惑の|イリュージョン|a
+虹色の|プリズム|a
+光速の|ライトスピード|a
+盲目の|ブラインド|a
+天眼|ヘヴンズアイ|n
+眩き|ブリリアント|a`,
+  BA: `重力|グラビティ|n
+静止した|ステイシス|a
+黒星|ブラックスター|n
+魔眼|イーヴィルアイ|n
+歪曲|ワープ|n
+虚空|ヴォイド|n
+刻を止める|クロノス|a
+堕ちる|フォーリング|a`,
+  BD: `雷鳴|サンダー|n
+紫電|プラズマ|n
+鋼鉄の|アイアン|a
+機械仕掛けの|クロックワーク|a
+帯電した|チャージド|a
+迅雷|ライトニング|n
+鉄血|アイアンブラッド|n`,
+  BS: `血塗れの|ブラッディ|a
+深紅|クリムゾン|n
+渇いた|サースティ|a
+不死なる|アンデッド|a
+緋色の|スカーレット|a
+血盟|ブラッドパクト|n
+紅き|ルージュ|a`,
+  KY: `獰猛なる|フェロシャス|a
+牙剥く|ファングド|a
+飢えた|ハングリー|a
+野生の|ワイルド|a
+獣性|ビースト|n
+咆哮する|ロアリング|a
+群れなき|ローン|a`,
+  EX: `歪な|ツイステッド|a
+流転する|フラックス|a
+変貌する|メタモルフ|a
+這い寄る|クリーピング|a
+無形の|アモルファス|a
+継ぎ接ぎの|パッチワーク|a
+骸|ボーン|n`,
+  HA: `疾風|ゲイル|n
+音速の|ソニック|a
+響き渡る|エコーイング|a
+旋風|ワールウィンド|n
+静寂|サイレンス|n
+韋駄天|スウィフト|n
+囁く|ウィスパー|a`,
+  MO: `砂塵|サンドストーム|n
+錬成|アルケミー|n
+無限の|インフィニット|a
+贋作|フォージェリ|n
+鍛えられた|フォージド|a
+千刃|サウザンドブレード|n
+硝子の|グラス|a`,
+  NE: `冷徹なる|コールド|a
+全知の|オムニシエント|a
+計算された|カリキュレイテッド|a
+論理|ロジック|n
+叡智|ウィズダム|n
+盤上|チェス|n
+予見する|フォーサイト|a`,
+  OR: `領域|ドメイン|n
+統べる|ルーリング|a
+迷宮|ラビリンス|n
+世界樹|ユグドラシル|n
+群れなす|スウォーム|a
+因子|ファクター|n
+箱庭|ミニアチュール|n`,
+  SA: `紅蓮|インフェルノ|n
+凍てつく|フリージング|a
+灼熱の|スコーチング|a
+氷結|フロスト|n
+燃え盛る|ブレイジング|a
+永久凍土|パーマフロスト|n
+焦熱|ヒート|n`,
+  SO: `甘美なる|スウィート|a
+毒|ポイズン|n
+蠱惑の|エンチャンティング|a
+陶酔|エクスタシー|n
+芳しき|フレグラント|a
+腐蝕する|コローディング|a
+微睡む|ドリーミング|a`,
+  UR: `影|シャドウ|n
+喰らう|デヴァウリング|a
+虚無|ニヒル|n
+黒き|ブラック|a
+模倣する|ミミック|a
+呑み込む|スワロウ|a
+円環|サークル|n`,
+  RB: `人ならざる|インヒューマン|a
+鉱石|ミネラル|n
+異界の|アウター|a
+目覚めた|アウェイクン|a
+名を持たぬ|アンネームド|a`,
+};
+
+const NOUNS = {
+  G: `一兵卒|プライベート
+処刑人|エクスキューショナー
+旅人|トラベラー
+道化|クラウン
+番犬|ウォッチドッグ
+観測者|オブザーバー
+語り部|ストーリーテラー
+守護者|ガーディアン
+狩人|ハンター
+騎士|ナイト
+聖女|セイント
+魔女|ウィッチ
+亡霊|ファントム
+王|キング
+女王|クイーン
+天使|エンジェル
+悪魔|デーモン
+人形|ドール
+殉教者|マーター
+反逆者|レネゲイド
+傍観者|バイスタンダー
+放浪者|ワンダラー
+墓守|グレイヴキーパー
+羊飼い|シェパード
+詩人|ポエット
+探偵|ディテクティヴ
+剣|ブレード
+盾|シールド
+鐘|ベル
+仮面|マスク
+棺|コフィン
+鍵|キー
+薔薇|ローズ
+鴉|レイヴン
+狼|ウルフ
+蝶|バタフライ
+月|ルナ
+星|スター
+花嫁|ブライド
+執行者|エンフォーサー
+導き手|ガイド
+囚人|プリズナー
+預言者|プロフェット
+兵士|ソルジャー
+少年|ボーイ
+少女|ガール`,
+  AH: `蜃気楼|ミラージュ
+灯台|ライトハウス
+鏡|ミラー
+光輪|ヘイロー
+狙撃手|スナイパー
+幻影|イリュージョン`,
+  BA: `魔弾|フライクーゲル
+時計|クロック
+黒穴|ブラックホール
+門|ゲート
+砂時計|アワーグラス
+魔眼|イーヴィルアイ`,
+  BD: `雷神|トール
+機神|デウスエクスマキナ
+猟犬|ハウンド
+発電機|ダイナモ
+鉄槌|ハンマー
+回路|サーキット`,
+  BS: `吸血鬼|ヴァンパイア
+血族|キンドレッド
+伯爵|カウント
+祭壇|オルター
+聖杯|グレイル
+茨|ソーン`,
+  KY: `獣|ビースト
+竜|ドラゴン
+獅子|レオ
+狼王|フェンリル
+牙|ファング
+合成獣|キメラ`,
+  EX: `異形|フリーク
+繭|コクーン
+蛹|ピューパ
+泥人形|ゴーレム
+触腕|テンタクル
+変身者|シェイプシフター`,
+  HA: `風|ウィンド
+歌姫|ディーヴァ
+疾走者|ランナー
+残響|エコー
+旋律|メロディ
+隼|ファルコン`,
+  MO: `錬金術師|アルケミスト
+鍛冶師|スミス
+贋作者|フォージャー
+砂の王|サンドキング
+武器庫|アーセナル
+硝子細工|グラスワーク`,
+  NE: `軍師|タクティシャン
+賢者|セージ
+演算機|カリキュレーター
+指揮者|コンダクター
+棋士|グランドマスター
+教授|プロフェッサー`,
+  OR: `支配者|ルーラー
+庭師|ガーデナー
+迷い子|ロストチャイルド
+女帝|エンプレス
+領主|ロード
+女神|ゴッデス`,
+  SA: `焔|フレイム
+不死鳥|フェニックス
+雪姫|スノウホワイト
+炎魔|イフリート
+焼却者|インシネレーター
+氷柱|アイシクル`,
+  SO: `調香師|パフューマー
+薬師|アポセカリー
+毒蛇|ヴァイパー
+夢魔|ナイトメア
+女王蜂|クイーンビー
+蜜|ハニー`,
+  UR: `影法師|シャドウマン
+蛇|ウロボロス
+捕食者|プレデター
+模倣者|ミミック
+黒猫|ブラックキャット
+暗渠|カルバート`,
+  RB: `異邦人|ストレンジャー
+隣人|ネイバー
+結晶|クリスタル
+来訪者|ビジター
+遺物|レリック`,
+};
+
+/* ============================================================ */
+const parse = (txt, tag, isMod) => txt.trim().split('\n').filter(Boolean).map(l => {
+  const [jp, ru, type] = l.split('|').map(s => s.trim());
+  return isMod ? { jp, ru, type: type || 'a', tag } : { jp, ru, tag };
+});
+const ALL_MODS = Object.entries(MODS).flatMap(([t, s]) => parse(s, t, true));
+const ALL_NOUNS = Object.entries(NOUNS).flatMap(([t, s]) => parse(s, t, false));
+
+const $ = id => document.getElementById(id);
+const esc = s => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const pick = a => a[Math.floor(Math.random() * a.length)];
+
+let locks = { mod: null, noun: null };
+let favs = [];
+let current = [];
+
+function customWords() {
+  const mods = [], nouns = [];
+  for (const line of $('custom').value.split('\n')) {
+    const p = line.split('|').map(s => s.trim());
+    if (p.length < 3 || !p[1] || !p[2]) continue;
+    if (p[0] === '前') mods.push({ jp: p[1], ru: p[2], type: 'a', tag: 'C' });
+    else if (p[0] === '後') nouns.push({ jp: p[1], ru: p[2], tag: 'C' });
+  }
+  return { mods, nouns };
+}
+
+// 選択シンドロームの語を重めに、共通語も混ぜる
+function weightedPool(list, selected, custom) {
+  if (!selected.length) return [...list, ...custom, ...custom];
+  const pool = [];
+  for (const w of list) {
+    if (selected.includes(w.tag)) pool.push(w, w, w, w);
+    else if (w.tag === 'G') pool.push(w);
+  }
+  return [...pool, ...custom, ...custom, ...custom];
+}
+
+function connector(mod) {
+  if (mod.type === 'a') return '';
+  const j = $('joint').value;
+  const naruRate = j === 'naru' ? 0.75 : j === 'no' ? 0.1 : 0.35;
+  return Math.random() < naruRate ? 'なる' : 'の';
+}
+
+function generate() {
+  const selected = [...document.querySelectorAll('#syn input:checked')].map(i => i.value);
+  const cw = customWords();
+  const modPool = weightedPool(ALL_MODS, selected, cw.mods);
+  const nounPool = weightedPool(ALL_NOUNS, selected, cw.nouns);
+  const n = +$('count').value;
+  const seen = new Set();
+  current = [];
+  for (let tries = 0; current.length < n && tries < n * 30; tries++) {
+    const mod = locks.mod ? locks.mod.mod : pick(modPool);
+    const noun = locks.noun || pick(nounPool);
+    if (mod.jp.replace(/の$/, '') === noun.jp) continue;
+    const conn = locks.mod ? locks.mod.conn : connector(mod);
+    const key = mod.jp + conn + noun.jp;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    current.push({ mod, conn, noun });
+  }
+  renderOut();
+}
+
+const reading = c => c.mod.ru + $('sep').value + c.noun.ru;
+const plain = c => `${c.mod.jp}${c.conn}${c.noun.jp}(${reading(c)})`;
+const isFav = c => favs.some(f => f.text === plain(c));
+
+function renderOut() {
+  $('out').innerHTML = current.map((c, i) => `
+    <div class="item">
+      <div class="name"><ruby><span class="part ${locks.mod && locks.mod.mod.jp === c.mod.jp ? 'locked' : ''}" data-i="${i}" data-part="mod" title="クリックで固定">${esc(c.mod.jp + c.conn)}</span><span class="part ${locks.noun && locks.noun.jp === c.noun.jp ? 'locked' : ''}" data-i="${i}" data-part="noun" title="クリックで固定">${esc(c.noun.jp)}</span><rt>${esc(reading(c))}</rt></ruby></div>
+      <div class="tools">
+        <button data-act="copy" data-i="${i}">コピー</button>
+        <button data-act="fav" data-i="${i}" class="${isFav(c) ? 'on' : ''}">${isFav(c) ? '★' : '☆'}</button>
+      </div>
+    </div>`).join('');
+}
+
+function renderLocks() {
+  const chips = [];
+  if (locks.mod) chips.push(`<span class="lock-chip">前半：${esc(locks.mod.mod.jp + locks.mod.conn)}<button data-unlock="mod">×</button></span>`);
+  if (locks.noun) chips.push(`<span class="lock-chip">後半：${esc(locks.noun.jp)}<button data-unlock="noun">×</button></span>`);
+  $('locks').innerHTML = chips.length ? chips.join('') : '<span class="muted">なし（結果の前半・後半をクリックで固定）</span>';
+}
+
+function renderFavs() {
+  $('favs').innerHTML = favs.length
+    ? favs.map((f, i) => `<div class="fav-row"><div class="txt">${esc(f.jp)}<span>${esc(f.ru)}</span></div><button data-fcopy="${i}">コピー</button><button data-fdel="${i}">削除</button></div>`).join('')
+    : '<p class="muted">★を押すとここに保存されます。</p>';
+}
+
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 1200);
+}
+async function copy(text) {
+  try { await navigator.clipboard.writeText(text); toast('コピーしました：' + text); }
+  catch (e) { prompt('コピーしてください', text); }
+}
+
+function save() {
+  try {
+    localStorage.setItem('dx-codename-v1', JSON.stringify({
+      favs, custom: $('custom').value,
+      syn: [...document.querySelectorAll('#syn input:checked')].map(i => i.value),
+      joint: $('joint').value, sep: $('sep').value, count: $('count').value,
+    }));
+  } catch (e) {}
+}
+
+/* ---------- 初期化 ---------- */
+(function init() {
+  $('syn').innerHTML = Object.entries(SYNDROMES).filter(([k]) => k !== 'G')
+    .map(([k, v]) => `<label><input type="checkbox" value="${k}">${v.name}</label>`).join('');
+
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem('dx-codename-v1')); } catch (e) {}
+  if (saved) {
+    favs = saved.favs || [];
+    $('custom').value = saved.custom || '';
+    for (const k of saved.syn || []) { const el = document.querySelector(`#syn input[value="${k}"]`); if (el) el.checked = true; }
+    if (saved.joint) $('joint').value = saved.joint;
+    if (saved.sep !== undefined) $('sep').value = saved.sep;
+    if (saved.count) $('count').value = saved.count;
+  }
+
+  $('gen').addEventListener('click', () => { generate(); save(); });
+  $('clearLock').addEventListener('click', () => { locks = { mod: null, noun: null }; renderLocks(); renderOut(); });
+  $('sep').addEventListener('change', () => { renderOut(); save(); });
+  for (const id of ['joint', 'count', 'custom']) $(id).addEventListener('change', save);
+  $('syn').addEventListener('change', save);
+
+  $('out').addEventListener('click', e => {
+    const part = e.target.closest('.part');
+    if (part) {
+      const c = current[+part.dataset.i];
+      if (part.dataset.part === 'mod') {
+        locks.mod = locks.mod && locks.mod.mod.jp === c.mod.jp ? null : { mod: c.mod, conn: c.conn };
+      } else {
+        locks.noun = locks.noun && locks.noun.jp === c.noun.jp ? null : c.noun;
+      }
+      renderLocks(); renderOut();
+      return;
+    }
+    const btn = e.target.closest('button[data-act]');
+    if (!btn) return;
+    const c = current[+btn.dataset.i];
+    if (btn.dataset.act === 'copy') copy(plain(c));
+    if (btn.dataset.act === 'fav') {
+      const text = plain(c);
+      const idx = favs.findIndex(f => f.text === text);
+      if (idx >= 0) favs.splice(idx, 1);
+      else favs.unshift({ text, jp: c.mod.jp + c.conn + c.noun.jp, ru: reading(c) });
+      renderOut(); renderFavs(); save();
+    }
+  });
+  $('locks').addEventListener('click', e => {
+    const b = e.target.closest('[data-unlock]');
+    if (!b) return;
+    locks[b.dataset.unlock] = null; renderLocks(); renderOut();
+  });
+  $('favs').addEventListener('click', e => {
+    const c = e.target.closest('[data-fcopy]'), d = e.target.closest('[data-fdel]');
+    if (c) copy(favs[+c.dataset.fcopy].text);
+    if (d) { favs.splice(+d.dataset.fdel, 1); renderFavs(); save(); }
+  });
+
+  renderFavs();
+  generate();
+})();
+</script>
+</body>
+</html>

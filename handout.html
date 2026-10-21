@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ハンドアウトカードメーカー</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Shippori+Mincho:wght@600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ui-bg: #eceae6;
+    --ui-panel: #ffffff;
+    --ui-text: #222;
+    --ui-muted: #666;
+    --ui-accent: #b3122e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ui-bg);
+    color: var(--ui-text);
+    font-family: "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif;
+  }
+
+  /* ---------- 画面UI ---------- */
+  .app { display: grid; grid-template-columns: minmax(320px, 420px) 1fr; min-height: 100vh; }
+  .panel {
+    background: var(--ui-panel);
+    padding: 16px;
+    border-right: 1px solid #d8d5cf;
+    display: flex; flex-direction: column; gap: 12px;
+    height: 100vh; position: sticky; top: 0; overflow-y: auto;
+  }
+  .panel h1 { font-size: 18px; margin: 0; }
+  .panel p.hint { margin: 0; font-size: 12px; color: var(--ui-muted); line-height: 1.6; }
+  textarea {
+    width: 100%; flex: 1; min-height: 320px; resize: vertical;
+    font: 13px/1.6 "Noto Sans JP", monospace;
+    padding: 10px; border: 1px solid #ccc; border-radius: 6px;
+  }
+  .controls { display: grid; grid-template-columns: auto 1fr; gap: 8px 10px; align-items: center; font-size: 13px; }
+  select, input[type=range] { width: 100%; }
+  select { padding: 4px; }
+  .btns { display: flex; gap: 8px; flex-wrap: wrap; }
+  button {
+    border: 0; border-radius: 6px; padding: 10px 14px; font-size: 14px; cursor: pointer;
+    background: #ddd; color: #222; font-family: inherit;
+  }
+  button.primary { background: var(--ui-accent); color: #fff; font-weight: 700; }
+  details { font-size: 12px; color: #444; line-height: 1.7; }
+  details summary { cursor: pointer; font-weight: 700; }
+  details ol { padding-left: 1.4em; margin: 6px 0; }
+  .status { font-size: 12px; color: var(--ui-muted); }
+
+  .preview { padding: 24px; overflow: auto; }
+  .sheets { zoom: var(--zoom, 0.7); display: flex; flex-direction: column; align-items: center; gap: 24px; }
+  .sheet {
+    width: 210mm; height: 297mm; background: #fff;
+    box-shadow: 0 2px 12px rgba(0,0,0,.15);
+    display: grid; place-content: center;
+    grid-template-columns: repeat(var(--cols), var(--cw));
+    grid-auto-rows: var(--ch);
+    position: relative;
+  }
+  .sheet.landscape { width: 297mm; height: 210mm; }
+  .sheet .slot { position: relative; outline: 0.1mm dashed #aaa; }
+
+  @media (max-width: 800px) {
+    .app { grid-template-columns: 1fr; }
+    .panel { height: auto; position: static; }
+  }
+
+  /* ---------- カード ---------- */
+  .card {
+    --bg: #141416; --fg: #ecebe8; --sub: #9a9893; --line: #3a3a3e;
+    --accent: #c8102e; --accent-fg: #fff; --pos: #3b7dd8;
+    width: var(--cw); height: var(--ch);
+    font-size: var(--fs);
+    background: var(--bg); color: var(--fg);
+    position: relative; overflow: hidden;
+    padding: var(--pad, 1.3em 1.4em 1.2em);
+    display: flex; flex-direction: column; gap: 0.75em;
+    font-family: "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .card.theme-paper { --bg: #f5f0e4; --fg: #26221c; --sub: #7b715f; --line: #cfc4ad; --accent: #8e1b1b; --pos: #2c5c9c; }
+  .card.theme-white { --bg: #ffffff; --fg: #151515; --sub: #777; --line: #cfcfcf; --accent: #b00020; --pos: #2a62b8; }
+  .card.theme-navy  { --bg: #0f1a2c; --fg: #e8edf5; --sub: #8a9ab3; --line: #2a3a55; --accent: #d4a73a; --accent-fg: #111; --pos: #6fa8ff; }
+
+  /* 装飾 */
+  .card::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 0.45em; background: var(--accent);
+  }
+  .card .deco {
+    position: absolute; right: -0.15em; top: -0.35em;
+    font: 800 5.2em/1 "Shippori Mincho", serif; color: var(--fg); opacity: .06;
+    letter-spacing: -0.04em; pointer-events: none; white-space: nowrap;
+  }
+
+  .card header { display: flex; align-items: baseline; gap: 0.6em; border-bottom: 0.12em solid var(--accent); padding-bottom: 0.35em; position: relative; }
+  .card .ho-label { font-size: 0.72em; letter-spacing: 0.3em; color: var(--accent); font-weight: 700; }
+  .card .ho-title { font: 800 2.1em/1.1 "Shippori Mincho", "Yu Mincho", serif; }
+
+  .lbl {
+    display: inline-block; background: var(--accent); color: var(--accent-fg);
+    font-size: 0.68em; font-weight: 700; letter-spacing: 0.12em;
+    padding: 0.15em 0.55em; border-radius: 0.2em; white-space: nowrap;
+  }
+  .card .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 0.4em 0.8em; }
+  .card .meta .row { display: flex; align-items: center; gap: 0.45em; min-width: 0; }
+  .card .meta .val { font-weight: 700; font-size: 0.98em; overflow-wrap: anywhere; }
+
+  .card .lois { border: 0.08em solid var(--line); border-radius: 0.3em; padding: 0.95em 0.8em 0.6em; position: relative; }
+  .card .lois > .lbl { position: absolute; top: -0.6em; left: 0.7em; }
+  .card .epithet { font-size: 0.92em; color: var(--sub); line-height: 1.9; }
+  .card .name { font: 800 1.55em/1.7 "Shippori Mincho", "Yu Mincho", serif; }
+  .card ruby rt { font-size: 0.5em; font-family: "Noto Sans JP", sans-serif; font-weight: 400; color: var(--sub); letter-spacing: 0.05em; }
+  .card .emotion { display: flex; gap: 1em; margin-top: 0.35em; font-size: 0.9em; flex-wrap: wrap; align-items: center; }
+  .card .emotion .em-title { color: var(--sub); font-size: 0.85em; }
+  .card .emo { display: inline-flex; align-items: center; gap: 0.35em; font-weight: 700; }
+  .card .emo i {
+    font-style: normal; font-size: 0.75em; width: 1.5em; height: 1.5em; border-radius: 50%;
+    display: inline-grid; place-items: center; color: #fff;
+  }
+  .card .emo.p i { background: var(--pos); }
+  .card .emo.n i { background: var(--accent); color: var(--accent-fg); }
+
+  .card .synopsis { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 0.45em; }
+  .card .synopsis .text {
+    flex: 1; min-height: 0; overflow: hidden;
+    line-height: 1.75; white-space: pre-wrap; text-align: justify; overflow-wrap: anywhere;
+  }
+  .card .synopsis .text.overflow { box-shadow: inset 0 -0.3em 0 -0.1em #f0a; }
+  .card .side { display: contents; }
+  .card > *:not(.orn):not(.deco), .card .side > * { position: relative; z-index: 1; }
+
+  /* 横向き：左に情報、右にあらすじ */
+  .card.landscape {
+    display: grid; grid-template-columns: 1fr 1.25fr; grid-template-rows: auto 1fr;
+    column-gap: 1.2em; row-gap: 0.75em;
+  }
+  .card.landscape header { grid-column: 1 / -1; }
+  .card.landscape .side { display: flex; flex-direction: column; gap: 0.75em; grid-column: 1; grid-row: 2; min-height: 0; }
+  .card.landscape .meta { grid-template-columns: 1fr; }
+  .card.landscape .synopsis { grid-column: 2; grid-row: 2; }
+
+  /* ---------- あしらい ---------- */
+  .orn { position: absolute; inset: 0; pointer-events: none; z-index: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  /* コーナー飾り */
+  .card.orn-corners { --pad: 1.7em 1.9em 1.6em 2em; }
+  .orn-corners .orn i { position: absolute; width: 1.7em; height: 1.7em; border: 0 solid var(--accent); }
+  .orn-corners .orn i::after { content: ""; position: absolute; width: 0.32em; height: 0.32em; background: var(--accent); transform: rotate(45deg); }
+  .orn-corners .orn i:nth-child(1) { top: 0.6em; left: 0.9em; border-top-width: 0.12em; border-left-width: 0.12em; }
+  .orn-corners .orn i:nth-child(2) { top: 0.6em; right: 0.6em; border-top-width: 0.12em; border-right-width: 0.12em; }
+  .orn-corners .orn i:nth-child(3) { bottom: 0.6em; left: 0.9em; border-bottom-width: 0.12em; border-left-width: 0.12em; }
+  .orn-corners .orn i:nth-child(4) { bottom: 0.6em; right: 0.6em; border-bottom-width: 0.12em; border-right-width: 0.12em; }
+  .orn-corners .orn i:nth-child(1)::after { top: 0.3em; left: 0.3em; }
+  .orn-corners .orn i:nth-child(2)::after { top: 0.3em; right: 0.3em; }
+  .orn-corners .orn i:nth-child(3)::after { bottom: 0.3em; left: 0.3em; }
+  .orn-corners .orn i:nth-child(4)::after { bottom: 0.3em; right: 0.3em; }
+
+  /* 二重罫線 */
+  .card.orn-frame { --pad: 1.75em 1.8em 1.6em 2.1em; }
+  .orn-frame .orn { inset: 0.6em 0.6em 0.6em 1em; border: 0.08em solid var(--accent); }
+  .orn-frame .orn::after { content: ""; position: absolute; inset: 0.22em; border: 0.03em solid var(--sub); opacity: 0.6; }
+
+  /* サイバーライン */
+  .orn-circuit .orn svg { position: absolute; right: 0; bottom: 0.5em; width: 10em; color: var(--accent); opacity: 0.4; }
+  .orn-circuit .orn svg.top { bottom: auto; top: 3.4em; right: auto; left: 0.45em; width: 6em; transform: scaleX(-1); opacity: 0.25; }
+
+  /* ドット模様 */
+  .orn-pattern .orn {
+    color: var(--fg); opacity: 0.12;
+    background-image: radial-gradient(currentColor 0.07em, transparent 0.08em);
+    background-size: 0.8em 0.8em;
+    -webkit-mask-image: linear-gradient(200deg, #000 0%, transparent 45%, transparent 70%, #000 100%);
+    mask-image: linear-gradient(200deg, #000 0%, transparent 45%, transparent 70%, #000 100%);
+  }
+
+  /* ---------- 印刷 ---------- */
+  @media print {
+    body { background: #fff; }
+    .panel { display: none; }
+    .app { display: block; }
+    .preview { padding: 0; overflow: visible; }
+    .sheets { zoom: 1; gap: 0; display: block; }
+    .sheet { box-shadow: none; break-after: page; page-break-after: always; }
+    .sheet:last-child { break-after: auto; page-break-after: auto; }
+    .synopsis .text.overflow { box-shadow: none; }
+  }
+</style>
+<style id="pagestyle">@page { size: A4 portrait; margin: 0; }</style>
+</head>
+<body>
+<div class="app">
+  <aside class="panel">
+    <h1>ハンドアウトカードメーカー</h1>
+    <p class="hint">
+      テキストを貼り付けると自動でカード化します。「ハンドアウト」で始まる行ごとに1枚。<br>
+      読み取る項目：ハンドアウト / ワークス / カヴァー / ロイス / 推奨感情 / 残りはあらすじ
+    </p>
+    <textarea id="src" spellcheck="false"></textarea>
+    <div class="controls">
+      <label for="size">カードサイズ</label>
+      <select id="size">
+        <option value="89x127">L判 89×127mm（A4に4枚）</option>
+        <option value="95x140">大 95×140mm（A4に4枚）</option>
+        <option value="63x88">トランプ 63×88mm（A4に9枚）</option>
+      </select>
+      <label for="orient">向き</label>
+      <select id="orient">
+        <option value="portrait">縦</option>
+        <option value="landscape">横（A4横に配置）</option>
+      </select>
+      <label for="orn">あしらい</label>
+      <select id="orn">
+        <option value="none">なし</option>
+        <option value="corners">コーナー飾り</option>
+        <option value="frame">二重罫線</option>
+        <option value="circuit">サイバーライン</option>
+        <option value="pattern">ドット模様</option>
+      </select>
+      <label for="theme">デザイン</label>
+      <select id="theme">
+        <option value="dark">ブラック×レッド</option>
+        <option value="navy">ネイビー×ゴールド</option>
+        <option value="paper">生成り紙</option>
+        <option value="white">白（インク節約）</option>
+      </select>
+      <label for="zoom">表示倍率</label>
+      <input id="zoom" type="range" min="0.3" max="1.2" step="0.05" value="0.7">
+    </div>
+    <div class="btns">
+      <button class="primary" id="print">印刷 / PDF保存</button>
+      <button id="sample">サンプルに戻す</button>
+    </div>
+    <div class="status" id="status"></div>
+    <details>
+      <summary>コンビニプリントの手順</summary>
+      <ol>
+        <li>「印刷 / PDF保存」→ 送信先を <b>PDFに保存</b></li>
+        <li>用紙 <b>A4</b>・余白 <b>なし</b>・倍率 <b>100%</b>・<b>背景のグラフィック ON</b></li>
+        <li>保存したPDFを netprint（セブン）や ネットワークプリント（ローソン・ファミマ）に登録</li>
+        <li>店頭で <b>A4 / 等倍（拡大縮小なし）</b> で印刷し、点線に沿ってカット</li>
+      </ol>
+      あらすじが長くて入りきらない場合は文字を自動で縮小します。それでも溢れるとカード下部にピンクの線が出るので、サイズを大きくするか文章を短くしてください。
+    </details>
+  </aside>
+  <main class="preview">
+    <div class="sheets" id="sheets"></div>
+  </main>
+</div>
+
+<script>
+const SAMPLE = `ハンドアウトPC①
+ワークス/カヴァー：高校生/高校生
+ロイス:"素樸なる一兵卒(プリミティベイト)"
+ 万華透(ばんか とおる)
+推奨感情:P親近感/N不信感
+友人と待ち合わせをして登校する、それがキミの在るべき日常のはずだった。
+それは二度と叶うことはなく、キミは死んだ。
+死んで、力を手に入れた。
+理解が及ばぬまま、キミは万華透という少年から説明を受ける。彼はUGNという組織からこの景見市に派遣されてきたという。`;
+
+const STORAGE_KEY = 'handout-maker-v1';
+
+/* ---------- 解析 ---------- */
+const SEP = '[:：]';
+const RE = {
+  handout:    /^(?:ハンドアウト|HO|handout)\s*[:：]?\s*(.*)$/i,
+  worksCover: new RegExp(`^ワークス\\s*[/／・]\\s*カ[ヴバ]ァー\\s*${SEP}\\s*(.*)$`),
+  works:      new RegExp(`^ワークス\\s*${SEP}\\s*(.*)$`),
+  cover:      new RegExp(`^カ[ヴバ]ァー\\s*${SEP}\\s*(.*)$`),
+  lois:       new RegExp(`^(?:シナリオ)?ロイス\\s*${SEP}\\s*(.*)$`),
+  emotion:    new RegExp(`^推奨感情\\s*${SEP}\\s*(.*)$`),
+};
+
+function splitBlocks(text) {
+  const blocks = [];
+  let cur = null;
+  for (const raw of text.replace(/\r/g, '').split('\n')) {
+    const t = raw.trim();
+    if (RE.handout.test(t) && /^(ハンドアウト|HO|handout)/i.test(t)) {
+      cur = [];
+      blocks.push(cur);
+    } else if (!cur) {
+      if (!t) continue;
+      cur = [];
+      blocks.push(cur);
+    }
+    cur.push(raw);
+  }
+  return blocks;
+}
+
+function splitPair(v) {
+  const parts = v.split(/\s*[/／]\s*/);
+  return [parts[0] || '', parts.slice(1).join('/') || ''];
+}
+
+function parseBlock(lines) {
+  const d = { title: '', works: '', cover: '', epithet: '', name: '', pos: '', neg: '', emotionRaw: '', synopsis: [] };
+  let mode = 'head';
+  const loisExtra = [];
+
+  for (const raw of lines) {
+    const t = raw.trim();
+    let m;
+    if ((m = t.match(RE.handout)) && mode === 'head' && !d.title) {
+      d.title = m[1].trim(); continue;
+    }
+    if ((m = t.match(RE.worksCover))) { [d.works, d.cover] = splitPair(m[1].trim()); mode = 'meta'; continue; }
+    if ((m = t.match(RE.works)))      { d.works = m[1].trim(); mode = 'meta'; continue; }
+    if ((m = t.match(RE.cover)))      { d.cover = m[1].trim(); mode = 'meta'; continue; }
+    if ((m = t.match(RE.lois)))       { parseLoisValue(d, m[1].trim()); mode = 'lois'; continue; }
+    if ((m = t.match(RE.emotion)))    { parseEmotion(d, m[1].trim()); mode = 'synopsis'; continue; }
+
+    if (mode === 'lois') {
+      // ロイス直後の短い行・インデント行は人物名とみなす
+      const looksLikeName = t && (/^\s/.test(raw) || (t.length <= 24 && !/[。、！？!?]/.test(t)));
+      if (looksLikeName) { loisExtra.push(t); continue; }
+      mode = 'synopsis';
+    }
+    if (!t && d.synopsis.length === 0) continue;
+    d.synopsis.push(t);
+  }
+
+  if (loisExtra.length) {
+    if (!d.name) d.name = loisExtra.join(' ');
+    else if (!d.epithet) { d.epithet = d.name; d.name = loisExtra.join(' '); }
+  }
+  while (d.synopsis.length && !d.synopsis[d.synopsis.length - 1]) d.synopsis.pop();
+  d.synopsis = d.synopsis.join('\n');
+  return d;
+}
+
+function parseLoisValue(d, v) {
+  const q = v.match(/^["“”「『](.+?)["“”」』]\s*(.*)$/);
+  if (q) {
+    d.epithet = q[1].trim();
+    if (q[2]) d.name = q[2].trim();
+  } else if (v) {
+    d.name = v;
+  }
+}
+
+function parseEmotion(d, v) {
+  d.emotionRaw = v;
+  const [a, b] = splitPair(v);
+  for (const part of [a, b]) {
+    const m = part.match(/^\s*([PNＰＮ])\s*[:：]?\s*(.*)$/i);
+    if (!m) continue;
+    if (/[PＰ]/i.test(m[1])) d.pos = m[2].trim();
+    else d.neg = m[2].trim();
+  }
+  if (!d.pos && !d.neg) { d.pos = a.trim(); d.neg = b.trim(); }
+}
+
+/* ---------- 描画 ---------- */
+const esc = s => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// 「漢字(かな)」→ ルビ
+function rubify(s) {
+  const m = s.match(/^(.+?)\s*[（(]\s*(.+?)\s*[)）]\s*$/);
+  return m ? `<ruby>${esc(m[1])}<rt>${esc(m[2])}</rt></ruby>` : esc(s);
+}
+
+const CIRCUIT_SVG = cls => `
+  <svg class="${cls}" viewBox="0 0 120 60" aria-hidden="true">
+    <g fill="none" stroke="currentColor" stroke-width="1.2">
+      <path d="M120 8 H84 L68 24 H32"/><circle cx="29" cy="24" r="2.6"/>
+      <path d="M120 30 H98 L84 44 H54"/><circle cx="51" cy="44" r="2.6"/>
+      <path d="M120 52 H106"/><circle cx="103" cy="52" r="2.2"/>
+    </g>
+    <g fill="currentColor"><rect x="74" y="12" width="4" height="4"/><rect x="90" y="36" width="4" height="4"/></g>
+  </svg>`;
+
+function ornHTML(orn) {
+  switch (orn) {
+    case 'corners': return '<div class="orn"><i></i><i></i><i></i><i></i></div>';
+    case 'frame':
+    case 'pattern': return '<div class="orn"></div>';
+    case 'circuit': return `<div class="orn">${CIRCUIT_SVG('top')}${CIRCUIT_SVG('bottom')}</div>`;
+    default: return '';
+  }
+}
+
+function cardHTML(d, { theme, orn, orient }) {
+  const meta = [
+    d.works && `<div class="row"><span class="lbl">ワークス</span><span class="val">${esc(d.works)}</span></div>`,
+    d.cover && `<div class="row"><span class="lbl">カヴァー</span><span class="val">${esc(d.cover)}</span></div>`,
+  ].filter(Boolean).join('');
+
+  const emotion = (d.pos || d.neg) ? `
+    <div class="emotion">
+      <span class="em-title">推奨感情</span>
+      ${d.pos ? `<span class="emo p"><i>P</i>${esc(d.pos)}</span>` : ''}
+      ${d.neg ? `<span class="emo n"><i>N</i>${esc(d.neg)}</span>` : ''}
+    </div>` : '';
+
+  const lois = (d.name || d.epithet || emotion) ? `
+    <section class="lois">
+      <span class="lbl">ロイス</span>
+      ${d.epithet ? `<div class="epithet">“${rubify(d.epithet)}”</div>` : ''}
+      ${d.name ? `<div class="name">${rubify(d.name)}</div>` : ''}
+      ${emotion}
+    </section>` : '';
+
+  const decoText = (d.title.match(/PC\s*[\d①-⑳]+/i) || [d.title])[0] || 'HO';
+
+  return `
+  <div class="card theme-${theme} orn-${orn} ${orient}">
+    ${ornHTML(orn)}
+    <div class="deco">${esc(decoText)}</div>
+    <header>
+      <span class="ho-label">HANDOUT</span>
+      <span class="ho-title">${esc(d.title || '—')}</span>
+    </header>
+    <div class="side">
+      ${meta ? `<div class="meta">${meta}</div>` : ''}
+      ${lois}
+    </div>
+    ${d.synopsis ? `<section class="synopsis"><div><span class="lbl">あらすじ</span></div><div class="text">${esc(d.synopsis)}</div></section>` : ''}
+  </div>`;
+}
+
+// あらすじが溢れたら文字を縮小
+function fitText(el) {
+  let size = 1;
+  el.style.fontSize = size + 'em';
+  while (el.scrollHeight > el.clientHeight + 1 && size > 0.55) {
+    size -= 0.025;
+    el.style.fontSize = size + 'em';
+  }
+  el.classList.toggle('overflow', el.scrollHeight > el.clientHeight + 1);
+}
+
+const $ = id => document.getElementById(id);
+
+function render() {
+  const text = $('src').value;
+  const opts = { theme: $('theme').value, orn: $('orn').value, orient: $('orient').value };
+  const landscape = opts.orient === 'landscape';
+  const [s1, s2] = $('size').value.split('x').map(Number);
+  const [w, h] = landscape ? [s2, s1] : [s1, s2];
+  const [pageW, pageH] = landscape ? [297, 210] : [210, 297];
+  const cols = Math.floor((pageW - 10) / w);
+  const rows = Math.floor((pageH - 10) / h);
+  const perSheet = cols * rows;
+
+  $('pagestyle').textContent = `@page { size: A4 ${opts.orient}; margin: 0; }`;
+
+  const cards = splitBlocks(text).map(parseBlock).filter(d => d.title || d.name || d.synopsis);
+  const sheets = $('sheets');
+  sheets.style.setProperty('--cw', w + 'mm');
+  sheets.style.setProperty('--ch', h + 'mm');
+  sheets.style.setProperty('--fs', (Math.min(w, h) / (landscape ? 27 : 30)) + 'mm');
+  sheets.style.setProperty('--cols', cols);
+
+  let html = '';
+  for (let i = 0; i < cards.length; i += perSheet) {
+    html += `<div class="sheet ${opts.orient}">` +
+      cards.slice(i, i + perSheet).map(d => `<div class="slot">${cardHTML(d, opts)}</div>`).join('') +
+      '</div>';
+  }
+  sheets.innerHTML = html;
+  sheets.querySelectorAll('.synopsis .text').forEach(fitText);
+
+  const over = sheets.querySelectorAll('.text.overflow').length;
+  $('status').textContent = `${cards.length}枚 / A4 ${Math.ceil(cards.length / perSheet) || 0}ページ` +
+    (over ? `　⚠ ${over}枚であらすじが溢れています` : '');
+
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ text, size: $('size').value, ...opts }));
+  } catch (e) {}
+}
+
+/* ---------- 初期化 ---------- */
+(function init() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch (e) {}
+  $('src').value = saved?.text ?? SAMPLE;
+  if (saved?.size) $('size').value = saved.size;
+  if (saved?.theme) $('theme').value = saved.theme;
+  if (saved?.orn) $('orn').value = saved.orn;
+  if (saved?.orient) $('orient').value = saved.orient;
+
+  let timer;
+  $('src').addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(render, 200); });
+  for (const id of ['size', 'theme', 'orn', 'orient']) $(id).addEventListener('change', render);
+  $('zoom').addEventListener('input', e => document.documentElement.style.setProperty('--zoom', e.target.value));
+  $('print').addEventListener('click', () => window.print());
+  $('sample').addEventListener('click', () => {
+    if ($('src').value !== SAMPLE && !confirm('入力内容をサンプルで置き換えますか？')) return;
+    $('src').value = SAMPLE; render();
+  });
+
+  render();
+  document.fonts.ready.then(render);
+})();
+</script>
+</body>
+</html>

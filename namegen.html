@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>和名ジェネレーター</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Shippori+Mincho:wght@600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f0e8; --panel: #fffdf8; --line: #e0d8c8; --fg: #2a2520; --sub: #857a68;
+    --accent: #8e1b1b; --accent-soft: rgba(142,27,27,.1); --gold: #b8862a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font-family: "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px 60px; }
+  h1 { font: 800 26px/1.2 "Shippori Mincho", serif; margin: 0 0 4px; letter-spacing: .08em; }
+  h1 small { display: block; font: 700 11px/1 "Noto Sans JP", sans-serif; letter-spacing: .4em; color: var(--accent); margin-bottom: 8px; }
+  .lead { color: var(--sub); font-size: 13px; margin: 0 0 20px; }
+
+  .box { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; }
+  .box h2 { font-size: 12px; letter-spacing: .15em; color: var(--sub); margin: 0 0 10px; font-weight: 700; }
+  .row { display: flex; flex-wrap: wrap; gap: 16px 28px; }
+  .grp { display: flex; flex-direction: column; gap: 6px; }
+  .grp > span { font-size: 12px; color: var(--sub); font-weight: 700; }
+  .seg { display: flex; flex-wrap: wrap; gap: 6px; }
+  .seg label {
+    border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; font-size: 13px; cursor: pointer;
+    user-select: none; background: #fff; transition: .12s;
+  }
+  .seg input { display: none; }
+  .seg label:has(input:checked) { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
+  select { background: #fff; color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; font: inherit; font-size: 13px; }
+
+  .locks { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px; min-height: 30px; }
+  .lock-chip { background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 6px; padding: 3px 8px 3px 10px; display: inline-flex; gap: 8px; align-items: center; }
+  .lock-chip button { background: none; border: 0; color: var(--sub); cursor: pointer; font-size: 14px; padding: 0 2px; }
+  .muted { color: var(--sub); font-size: 12px; }
+
+  .actions { display: flex; gap: 10px; margin: 18px 0; flex-wrap: wrap; }
+  button.main {
+    background: var(--accent); color: #fff; border: 0; border-radius: 8px; padding: 12px 28px;
+    font: 700 16px "Noto Sans JP", sans-serif; cursor: pointer; letter-spacing: .1em;
+  }
+  button.sub { background: #e8e1d3; color: var(--fg); border: 0; border-radius: 8px; padding: 12px 16px; font: 14px "Noto Sans JP", sans-serif; cursor: pointer; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+  .item { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 14px 10px; position: relative; }
+  .tag { position: absolute; top: 8px; right: 10px; font-size: 10px; color: var(--sub); letter-spacing: .05em; }
+  .name { font: 800 26px/2.1 "Shippori Mincho", "Yu Mincho", serif; letter-spacing: .06em; }
+  .name ruby rt { font: 400 10px "Noto Sans JP", sans-serif; color: var(--sub); letter-spacing: .1em; }
+  .part { cursor: pointer; border-radius: 4px; padding: 0 2px; transition: background .12s; }
+  .part:hover { background: var(--accent-soft); }
+  .part.locked { background: var(--accent-soft); box-shadow: inset 0 -2px 0 var(--accent); }
+  .gap { display: inline-block; width: .4em; }
+  .tools { display: flex; gap: 4px; justify-content: flex-end; margin-top: 4px; }
+  .tools button { background: none; border: 1px solid var(--line); color: var(--sub); border-radius: 6px; font: 12px "Noto Sans JP", sans-serif; padding: 4px 9px; cursor: pointer; }
+  .tools button:hover { color: var(--fg); border-color: var(--sub); }
+  .tools button.on { color: var(--gold); border-color: var(--gold); }
+
+  .favs { margin-top: 28px; }
+  .favs h2 { font: 800 18px "Shippori Mincho", serif; margin: 0 0 10px; }
+  .fav-list { display: flex; flex-direction: column; gap: 6px; }
+  .fav-row { display: flex; align-items: center; gap: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; }
+  .fav-row .txt { flex: 1; font: 700 17px "Shippori Mincho", serif; }
+  .fav-row .txt span { font: 12px "Noto Sans JP", sans-serif; color: var(--sub); margin-left: 8px; }
+  .fav-row button { background: none; border: 0; color: var(--sub); cursor: pointer; font-size: 12px; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+    background: #2a2520; color: #fff; padding: 8px 16px; border-radius: 999px; font-size: 13px; font-weight: 700;
+    opacity: 0; transition: opacity .2s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+  details.custom summary { cursor: pointer; font-size: 12px; color: var(--sub); letter-spacing: .15em; font-weight: 700; }
+  details.custom textarea {
+    width: 100%; min-height: 90px; margin-top: 8px; background: #fff; color: var(--fg); border: 1px solid var(--line);
+    border-radius: 6px; padding: 8px; font: 13px/1.6 "Noto Sans JP", monospace;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1><small>JAPANESE NAME GENERATOR</small>和名ジェネレーター</h1>
+  <p class="lead">現代日本の人名をランダムに生成します。苗字・名前をクリックすると固定され、もう片方だけ振り直せます。</p>
+
+  <div class="box">
+    <div class="row">
+      <div class="grp"><span>性別</span>
+        <div class="seg" id="gender">
+          <label><input type="radio" name="g" value="any" checked>どちらでも</label>
+          <label><input type="radio" name="g" value="m">男性</label>
+          <label><input type="radio" name="g" value="f">女性</label>
+          <label><input type="radio" name="g" value="n">中性的</label>
+        </div>
+      </div>
+      <div class="grp"><span>年代</span>
+        <div class="seg" id="age">
+          <label><input type="radio" name="a" value="any" checked>ランダム</label>
+          <label><input type="radio" name="a" value="teen">10代</label>
+          <label><input type="radio" name="a" value="young">20〜30代</label>
+          <label><input type="radio" name="a" value="mid">40〜50代</label>
+          <label><input type="radio" name="a" value="old">60代以上</label>
+        </div>
+      </div>
+      <div class="grp"><span>苗字</span>
+        <div class="seg" id="sur">
+          <label><input type="radio" name="s" value="common">よくある</label>
+          <label><input type="radio" name="s" value="mix" checked>おまかせ</label>
+          <label><input type="radio" name="s" value="rare">珍しめ</label>
+        </div>
+      </div>
+      <div class="grp"><span>生成数</span>
+        <select id="count"><option>9</option><option selected>18</option><option>36</option></select>
+      </div>
+    </div>
+  </div>
+
+  <div class="box">
+    <h2>固定中</h2>
+    <div class="locks" id="locks"><span class="muted">なし（結果の苗字・名前をクリックで固定）</span></div>
+  </div>
+
+  <div class="box">
+    <details class="custom">
+      <summary>自分の苗字・名前を追加する</summary>
+      <p class="muted">1行に1つずつ、「姓|漢字|よみ」または「名|漢字|よみ|性別(m/f/n)」の形式で書いてください。<br>例）姓|万華|ばんか　　名|透|とおる|m</p>
+      <textarea id="custom" spellcheck="false"></textarea>
+    </details>
+  </div>
+
+  <div class="actions">
+    <button class="main" id="gen">生成</button>
+    <button class="sub" id="clearLock">固定を解除</button>
+  </div>
+
+  <div class="grid" id="out"></div>
+
+  <section class="favs">
+    <h2>お気に入り</h2>
+    <div class="fav-list" id="favs"><p class="muted">★を押すとここに保存されます。</p></div>
+  </section>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   データ
+   ============================================================ */
+const SUR_COMMON = `佐藤|さとう 鈴木|すずき 高橋|たかはし 田中|たなか 伊藤|いとう 渡辺|わたなべ 山本|やまもと 中村|なかむら 小林|こばやし 加藤|かとう
+吉田|よしだ 山田|やまだ 佐々木|ささき 山口|やまぐち 松本|まつもと 井上|いのうえ 木村|きむら 林|はやし 斎藤|さいとう 清水|しみず
+山崎|やまざき 森|もり 池田|いけだ 橋本|はしもと 阿部|あべ 石川|いしかわ 山下|やました 中島|なかじま 石井|いしい 小川|おがわ
+前田|まえだ 岡田|おかだ 長谷川|はせがわ 藤田|ふじた 後藤|ごとう 近藤|こんどう 村上|むらかみ 遠藤|えんどう 青木|あおき 坂本|さかもと
+福田|ふくだ 太田|おおた 西村|にしむら 藤井|ふじい 金子|かねこ 岡本|おかもと 藤原|ふじわら 中野|なかの 三浦|みうら 原田|はらだ
+中川|なかがわ 松田|まつだ 竹内|たけうち 小野|おの 田村|たむら 中山|なかやま 和田|わだ 石田|いしだ 森田|もりた 上田|うえだ
+原|はら 柴田|しばた 酒井|さかい 工藤|くどう 横山|よこやま 宮崎|みやざき 宮本|みやもと 内田|うちだ 高木|たかぎ 安藤|あんどう
+島田|しまだ 谷口|たにぐち 大野|おおの 高田|たかだ 丸山|まるやま 今井|いまい 河野|こうの 藤本|ふじもと 村田|むらた 武田|たけだ
+上野|うえの 杉山|すぎやま 増田|ますだ 小山|こやま 大塚|おおつか 平野|ひらの 菅原|すがわら 久保|くぼ 松井|まつい 千葉|ちば
+岩崎|いわさき 桜井|さくらい 野口|のぐち 松尾|まつお 野村|のむら 木下|きのした 菊地|きくち 佐野|さの 大西|おおにし 杉本|すぎもと
+新井|あらい 浜田|はまだ 市川|いちかわ 古川|ふるかわ 水野|みずの 小島|こじま 桑原|くわばら 榎本|えのもと 服部|はっとり 北村|きたむら`;
+
+const SUR_RARE = `一ノ瀬|いちのせ 九条|くじょう 神崎|かんざき 氷室|ひむろ 鷹野|たかの 御堂|みどう 天城|あまぎ 如月|きさらぎ 白石|しらいし 桐生|きりゅう
+霧島|きりしま 東雲|しののめ 朝比奈|あさひな 早乙女|さおとめ 久遠|くおん 柊|ひいらぎ 黒崎|くろさき 真壁|まかべ 宗像|むなかた 相楽|さがら
+雨宮|あまみや 綾瀬|あやせ 葛城|かつらぎ 月島|つきしま 灰原|はいばら 鬼塚|おにづか 鷺沢|さぎさわ 秋月|あきづき 七瀬|ななせ 水無瀬|みなせ
+橘|たちばな 真田|さなだ 伊集院|いじゅういん 西園寺|さいおんじ 蓮見|はすみ 篠宮|しのみや 冴島|さえじま 芹沢|せりざわ 片桐|かたぎり 久我|くが
+氷川|ひかわ 紫藤|しどう 藤堂|とうどう 八神|やがみ 鳴海|なるみ 夏目|なつめ 結城|ゆうき 三枝|さえぐさ 月城|つきしろ 鏑木|かぶらぎ
+百瀬|ももせ 小鳥遊|たかなし 四宮|しのみや 五十嵐|いがらし 十文字|じゅうもんじ 甲斐|かい 不破|ふわ 御影|みかげ 雛森|ひなもり 真宮|まみや`;
+
+// 名前：漢字|よみ  年代バケット teen(10代) / young(20〜30代) / mid(40〜50代) / old(60代以上)
+const GIVEN = {
+  m: {
+    teen: `蓮|れん 湊|みなと 陽翔|はると 蒼|あおい 樹|いつき 大翔|ひろと 悠真|ゆうま 陽向|ひなた 颯太|そうた 大和|やまと
+朝陽|あさひ 律|りつ 碧|あお 結翔|ゆいと 颯|はやて 新|あらた 蒼真|そうま 晴|はる 湊斗|みなと 奏|かなで
+伊織|いおり 岳|がく 凪|なぎ 快|かい 慧|けい 暖|だん 千颯|ちはや 一颯|いぶき 瑛太|えいた 煌|こう`,
+    young: `翔|しょう 拓海|たくみ 健太|けんた 陸|りく 海斗|かいと 翔太|しょうた 優斗|ゆうと 大樹|だいき 智也|ともや 航|わたる
+駿|しゅん 亮太|りょうた 涼|りょう 悠斗|ゆうと 拓也|たくや 翼|つばさ 誠|まこと 直人|なおと 圭|けい 透|とおる
+隼人|はやと 蒼汰|そうた 恭平|きょうへい 光太|こうた 和樹|かずき 雄大|ゆうだい 空|そら 啓太|けいた 慎也|しんや 陽介|ようすけ`,
+    mid: `大輔|だいすけ 拓也|たくや 直樹|なおき 達也|たつや 和也|かずや 哲也|てつや 誠|まこと 亮|りょう 雄一|ゆういち 剛|つよし
+学|まなぶ 浩二|こうじ 秀樹|ひでき 裕介|ゆうすけ 慎吾|しんご 雅人|まさと 智|さとし 竜也|たつや 洋平|ようへい 賢治|けんじ
+隆|たかし 淳|じゅん 修|おさむ 康平|こうへい 敦|あつし 浩|ひろし 健|けん 正樹|まさき 英樹|ひでき 聡|さとし`,
+    old: `清|きよし 茂|しげる 博|ひろし 勝|まさる 実|みのる 正男|まさお 和夫|かずお 昭|あきら 進|すすむ 弘|ひろし
+健一|けんいち 正|ただし 光男|みつお 幸雄|ゆきお 武|たけし 豊|ゆたか 義男|よしお 孝|たかし 誠一|せいいち 秀夫|ひでお
+一郎|いちろう 三郎|さぶろう 功|いさお 稔|みのる 忠|ただし 徹|とおる 信夫|のぶお 敏夫|としお 源蔵|げんぞう 喜一|きいち`,
+  },
+  f: {
+    teen: `陽葵|ひまり 凛|りん 結菜|ゆいな 葵|あおい 芽依|めい 紬|つむぎ 澪|みお 結愛|ゆあ 咲良|さくら 莉子|りこ
+心春|こはる 杏|あん 楓|かえで 詩|うた 陽菜|ひな 琴音|ことね 美月|みつき 柚葉|ゆずは 彩葉|いろは 心結|みゆ
+茉白|ましろ 雫|しずく 灯|あかり 紗良|さら 瑠璃|るり 花|はな 羽菜|はな 絢音|あやね 環|たまき 凪紗|なぎさ`,
+    young: `美咲|みさき 七海|ななみ 遥|はるか 千尋|ちひろ 萌|もえ 夏帆|かほ 明日香|あすか 彩花|あやか 真央|まお 優花|ゆうか
+沙也加|さやか 菜々子|ななこ 美優|みゆ 茜|あかね 愛梨|あいり 杏奈|あんな 結衣|ゆい 由衣|ゆい 麻友|まゆ 舞|まい
+葉月|はづき 未来|みく 真琴|まこと 紗希|さき 詩織|しおり 千夏|ちなつ 玲奈|れな 楓|かえで 花音|かのん 美波|みなみ`,
+    mid: `愛|あい 彩|あや 美穂|みほ 麻衣|まい 優子|ゆうこ 恵|めぐみ 沙織|さおり 香織|かおり 智子|ともこ 由美|ゆみ
+真由美|まゆみ 裕子|ゆうこ 陽子|ようこ 綾|あや 瞳|ひとみ 千秋|ちあき 奈々|なな 朋美|ともみ 亜希|あき 理恵|りえ
+美紀|みき 絵美|えみ 明美|あけみ 直美|なおみ 由佳|ゆか 早苗|さなえ 薫|かおる 静香|しずか 久美|くみ 典子|のりこ`,
+    old: `和子|かずこ 幸子|さちこ 節子|せつこ 洋子|ようこ 京子|きょうこ 久美子|くみこ 恵子|けいこ 順子|じゅんこ 美智子|みちこ 悦子|えつこ
+文子|ふみこ 光子|みつこ 静子|しずこ 敏子|としこ 春江|はるえ 君子|きみこ 千代|ちよ 良子|よしこ 弘子|ひろこ 登美子|とみこ
+信子|のぶこ 喜美子|きみこ 雅子|まさこ 由美子|ゆみこ 富子|とみこ 八重|やえ 百合子|ゆりこ 澄子|すみこ 貞子|さだこ 梅|うめ`,
+  },
+  n: `薫|かおる 葵|あおい 遥|はるか 真琴|まこと 翼|つばさ 晶|あきら 瑞希|みずき 光|ひかる 忍|しのぶ 渚|なぎさ
+千尋|ちひろ 優|ゆう 碧|あお 凪|なぎ 空|そら 蛍|ほたる 司|つかさ 歩|あゆむ 純|じゅん 夕|ゆう
+楓|かえで 樹|いつき 律|りつ 湊|みなと 雫|しずく 灯|あかり 朔|さく 環|たまき 七瀬|ななせ 紬|つむぎ`,
+};
+
+const AGE_LABEL = { teen: '10代', young: '20〜30代', mid: '40〜50代', old: '60代以上' };
+
+/* ============================================================ */
+const parse = s => s.trim().split(/\s+/).filter(Boolean).map(t => { const [jp, yo] = t.split('|'); return { jp, yo }; });
+const SUR = { common: parse(SUR_COMMON), rare: parse(SUR_RARE) };
+const G = { m: {}, f: {}, n: parse(GIVEN.n) };
+for (const g of ['m', 'f']) for (const a of Object.keys(AGE_LABEL)) G[g][a] = parse(GIVEN[g][a]).map(x => ({ ...x, g, age: a }));
+G.n = G.n.map(x => ({ ...x, g: 'n', age: null }));
+
+const $ = id => document.getElementById(id);
+const esc = s => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const val = id => document.querySelector(`#${id} input:checked`).value;
+
+let locks = { sur: null, given: null };
+let favs = [];
+let current = [];
+
+function customWords() {
+  const sur = [], given = [];
+  for (const line of $('custom').value.split('\n')) {
+    const p = line.split('|').map(s => s.trim());
+    if (p.length < 3 || !p[1] || !p[2]) continue;
+    if (p[0] === '姓') sur.push({ jp: p[1], yo: p[2] });
+    if (p[0] === '名') given.push({ jp: p[1], yo: p[2], g: p[3] || 'n', age: null });
+  }
+  return { sur, given };
+}
+
+function surnamePool(mode, custom) {
+  const c = SUR.common, r = SUR.rare;
+  const base = mode === 'common' ? c : mode === 'rare' ? r : [...c, ...c, ...r];  // おまかせは よくある:珍しめ ≒ 2:1
+  return [...base, ...custom, ...custom];
+}
+
+function givenPool(gender, age, custom) {
+  const ages = age === 'any' ? Object.keys(AGE_LABEL) : [age];
+  // 20〜30代は10代の名前も少し混ぜる、40〜50代は20〜30代を少し混ぜる（年代の境目を自然に）
+  const neighbor = { young: 'teen', mid: 'young' };
+  let pool = [];
+  const add = (g, a, w) => { for (let i = 0; i < w; i++) pool.push(...G[g][a]); };
+  const genders = gender === 'any' ? ['m', 'f'] : gender === 'n' ? [] : [gender];
+  for (const g of genders) for (const a of ages) {
+    add(g, a, 3);
+    if (age !== 'any' && neighbor[a]) add(g, neighbor[a], 1);
+  }
+  if (gender === 'n' || gender === 'any') pool.push(...G.n);
+  const cg = custom.filter(x => gender === 'any' || x.g === gender || x.g === 'n');
+  return [...pool, ...cg, ...cg, ...cg];
+}
+
+function generate() {
+  const cw = customWords();
+  const sp = surnamePool(val('sur'), cw.sur);
+  const gp = givenPool(val('gender'), val('age'), cw.given);
+  const n = +$('count').value;
+  const seen = new Set();
+  current = [];
+  for (let t = 0; current.length < n && t < n * 40; t++) {
+    const s = locks.sur || pick(sp);
+    const g = locks.given || pick(gp);
+    if (s.jp === g.jp) continue;
+    const key = s.jp + g.jp;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    current.push({ s, g });
+  }
+  renderOut();
+}
+
+const plain = c => `${c.s.jp}${c.g.jp}(${c.s.yo} ${c.g.yo})`;
+const isFav = c => favs.some(f => f.text === plain(c));
+const tagOf = c => {
+  const g = { m: '男性', f: '女性', n: '中性的' }[c.g.g] || '';
+  return [g, c.g.age ? AGE_LABEL[c.g.age] : ''].filter(Boolean).join('・');
+};
+
+function renderOut() {
+  $('out').innerHTML = current.map((c, i) => `
+    <div class="item">
+      <span class="tag">${esc(tagOf(c))}</span>
+      <div class="name"><span class="part ${locks.sur && locks.sur.jp === c.s.jp ? 'locked' : ''}" data-i="${i}" data-part="sur" title="クリックで固定"><ruby>${esc(c.s.jp)}<rt>${esc(c.s.yo)}</rt></ruby></span><span class="gap"></span><span class="part ${locks.given && locks.given.jp === c.g.jp && locks.given.yo === c.g.yo ? 'locked' : ''}" data-i="${i}" data-part="given" title="クリックで固定"><ruby>${esc(c.g.jp)}<rt>${esc(c.g.yo)}</rt></ruby></span></div>
+      <div class="tools">
+        <button data-act="copy" data-i="${i}">コピー</button>
+        <button data-act="fav" data-i="${i}" class="${isFav(c) ? 'on' : ''}">${isFav(c) ? '★' : '☆'}</button>
+      </div>
+    </div>`).join('');
+}
+
+function renderLocks() {
+  const chips = [];
+  if (locks.sur) chips.push(`<span class="lock-chip">苗字：${esc(locks.sur.jp)}（${esc(locks.sur.yo)}）<button data-unlock="sur">×</button></span>`);
+  if (locks.given) chips.push(`<span class="lock-chip">名前：${esc(locks.given.jp)}（${esc(locks.given.yo)}）<button data-unlock="given">×</button></span>`);
+  $('locks').innerHTML = chips.length ? chips.join('') : '<span class="muted">なし（結果の苗字・名前をクリックで固定）</span>';
+}
+
+function renderFavs() {
+  $('favs').innerHTML = favs.length
+    ? favs.map((f, i) => `<div class="fav-row"><div class="txt">${esc(f.jp)}<span>${esc(f.yo)}${f.tag ? '　' + esc(f.tag) : ''}</span></div><button data-fcopy="${i}">コピー</button><button data-fdel="${i}">削除</button></div>`).join('')
+    : '<p class="muted">★を押すとここに保存されます。</p>';
+}
+
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 1200);
+}
+async function copy(text) {
+  try { await navigator.clipboard.writeText(text); toast('コピーしました：' + text); }
+  catch (e) { prompt('コピーしてください', text); }
+}
+
+function save() {
+  try {
+    localStorage.setItem('jp-namegen-v1', JSON.stringify({
+      favs, custom: $('custom').value, g: val('gender'), a: val('age'), s: val('sur'), count: $('count').value,
+    }));
+  } catch (e) {}
+}
+
+(function init() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem('jp-namegen-v1')); } catch (e) {}
+  if (saved) {
+    favs = saved.favs || [];
+    $('custom').value = saved.custom || '';
+    for (const [grp, v] of [['gender', saved.g], ['age', saved.a], ['sur', saved.s]]) {
+      const el = v && document.querySelector(`#${grp} input[value="${v}"]`);
+      if (el) el.checked = true;
+    }
+    if (saved.count) $('count').value = saved.count;
+  }
+
+  $('gen').addEventListener('click', () => { generate(); save(); });
+  $('clearLock').addEventListener('click', () => { locks = { sur: null, given: null }; renderLocks(); renderOut(); });
+  for (const id of ['gender', 'age', 'sur']) $(id).addEventListener('change', () => { generate(); save(); });
+  for (const id of ['count', 'custom']) $(id).addEventListener('change', save);
+
+  $('out').addEventListener('click', e => {
+    const part = e.target.closest('.part');
+    if (part) {
+      const c = current[+part.dataset.i];
+      if (part.dataset.part === 'sur') locks.sur = locks.sur && locks.sur.jp === c.s.jp ? null : c.s;
+      else locks.given = locks.given && locks.given.jp === c.g.jp && locks.given.yo === c.g.yo ? null : c.g;
+      renderLocks(); renderOut();
+      return;
+    }
+    const btn = e.target.closest('button[data-act]');
+    if (!btn) return;
+    const c = current[+btn.dataset.i];
+    if (btn.dataset.act === 'copy') copy(plain(c));
+    if (btn.dataset.act === 'fav') {
+      const text = plain(c);
+      const idx = favs.findIndex(f => f.text === text);
+      if (idx >= 0) favs.splice(idx, 1);
+      else favs.unshift({ text, jp: c.s.jp + c.g.jp, yo: `${c.s.yo} ${c.g.yo}`, tag: tagOf(c) });
+      renderOut(); renderFavs(); save();
+    }
+  });
+  $('locks').addEventListener('click', e => {
+    const b = e.target.closest('[data-unlock]');
+    if (!b) return;
+    locks[b.dataset.unlock] = null; renderLocks(); renderOut();
+  });
+  $('favs').addEventListener('click', e => {
+    const c = e.target.closest('[data-fcopy]'), d = e.target.closest('[data-fdel]');
+    if (c) copy(favs[+c.dataset.fcopy].text);
+    if (d) { favs.splice(+d.dataset.fdel, 1); renderFavs(); save(); }
+  });
+
+  renderFavs();
+  generate();
+})();
+</script>
+</body>
+</html>

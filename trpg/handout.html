@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TRPGハンドアウトメーカー</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Shippori+Mincho:wght@600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ui-bg: #eceae6;
+    --ui-panel: #ffffff;
+    --ui-text: #222;
+    --ui-muted: #666;
+    --ui-line: #d8d5cf;
+    --ui-accent: #b3122e;
+  }
+  body.sys-coc { --ui-accent: #2f5d4a; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ui-bg);
+    color: var(--ui-text);
+    font-family: "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif;
+  }
+
+  /* ---------- 画面UI ---------- */
+  .app { display: grid; grid-template-columns: minmax(340px, 460px) 1fr; min-height: 100vh; }
+  .panel {
+    background: var(--ui-panel);
+    padding: 16px;
+    border-right: 1px solid var(--ui-line);
+    display: flex; flex-direction: column; gap: 12px;
+    height: 100vh; position: sticky; top: 0; overflow-y: auto;
+  }
+  .panel h1 { font-size: 18px; margin: 0; }
+  .panel p.hint { margin: 0; font-size: 12px; color: var(--ui-muted); line-height: 1.6; }
+  .sys { display: flex; gap: 6px; }
+  .sys button { flex: 1; }
+  .sys button[aria-pressed="true"] { background: var(--ui-accent); color: #fff; font-weight: 700; }
+  label.f { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--ui-muted); font-weight: 700; }
+  input[type=text], textarea, select {
+    width: 100%; font: 13px/1.6 "Noto Sans JP", sans-serif; color: var(--ui-text);
+    padding: 6px 8px; border: 1px solid #ccc; border-radius: 6px; background: #fff;
+  }
+  textarea { resize: vertical; min-height: 64px; }
+  .controls { display: grid; grid-template-columns: auto 1fr; gap: 8px 10px; align-items: center; font-size: 13px; }
+  input[type=range] { width: 100%; }
+  .btns { display: flex; gap: 8px; flex-wrap: wrap; }
+  button {
+    border: 0; border-radius: 6px; padding: 10px 14px; font-size: 14px; cursor: pointer;
+    background: #ddd; color: #222; font-family: inherit;
+  }
+  button.primary { background: var(--ui-accent); color: #fff; font-weight: 700; }
+  button.mini { padding: 5px 9px; font-size: 12px; background: #eee; }
+  button.mini:disabled { opacity: .35; cursor: default; }
+  details { font-size: 12px; color: #444; line-height: 1.7; }
+  details summary { cursor: pointer; font-weight: 700; }
+  details ol { padding-left: 1.4em; margin: 6px 0; }
+  .status { font-size: 12px; color: var(--ui-muted); }
+
+  .ho { border: 1px solid var(--ui-line); border-left: 4px solid var(--ui-accent); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+  .ho-head { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .ho-head b { font-size: 13px; flex: 1; min-width: 6em; }
+  .ho .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .ho .kind { width: auto; }
+  .sys-coc .sg-only, .sys-sg .coc-only { display: none !important; }
+
+  .preview { padding: 24px; overflow: auto; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 16px; }
+  .tabs button[aria-selected="true"] { background: var(--ui-accent); color: #fff; font-weight: 700; }
+  .sheets { zoom: var(--zoom, 0.7); display: flex; flex-direction: column; align-items: center; gap: 24px; }
+  .sheet {
+    width: 210mm; height: 297mm; background: #fff;
+    box-shadow: 0 2px 12px rgba(0,0,0,.15);
+    display: grid; place-content: center;
+    grid-template-columns: repeat(2, var(--cw));
+    grid-auto-rows: var(--ch);
+    position: relative;
+  }
+  .sheet .slot { position: relative; outline: 0.1mm dashed #aaa; }
+  .textout { display: none; flex-direction: column; gap: 14px; max-width: 760px; }
+  .textout.on { display: flex; }
+  .tbox { background: #fff; border-radius: 8px; padding: 12px 14px; box-shadow: 0 1px 6px rgba(0,0,0,.08); }
+  .tbox h3 { margin: 0 0 8px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .tbox pre { margin: 0; white-space: pre-wrap; font: 13px/1.7 "Noto Sans JP", sans-serif; overflow-wrap: anywhere; }
+  .tbox.secret { border-left: 4px solid var(--ui-accent); }
+
+  @media (max-width: 800px) {
+    .app { grid-template-columns: 1fr; }
+    .panel { height: auto; position: static; border-right: 0; }
+    .preview { padding: 16px; }
+  }
+
+  /* ---------- カード ---------- */
+  .card {
+    --bg: #141416; --fg: #ecebe8; --sub: #9a9893; --line: #3a3a3e;
+    --accent: #c8102e; --accent-fg: #fff;
+    width: var(--cw); height: var(--ch);
+    font-size: var(--fs);
+    background: var(--bg); color: var(--fg);
+    position: relative; overflow: hidden;
+    padding: 1.3em 1.4em 1.2em 1.8em;
+    display: flex; flex-direction: column; gap: 0.7em;
+    font-family: "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .card.theme-paper { --bg: #f5f0e4; --fg: #26221c; --sub: #7b715f; --line: #cfc4ad; --accent: #8e1b1b; }
+  .card.theme-white { --bg: #ffffff; --fg: #151515; --sub: #777; --line: #cfcfcf; --accent: #b00020; }
+  .card.theme-moss  { --bg: #13201b; --fg: #e6eadf; --sub: #8fa093; --line: #2c3d35; --accent: #b89a4e; --accent-fg: #111; }
+  .card.theme-navy  { --bg: #0f1a2c; --fg: #e8edf5; --sub: #8a9ab3; --line: #2a3a55; --accent: #d4a73a; --accent-fg: #111; }
+
+  .card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 0.45em; background: var(--accent); }
+  .card .deco {
+    position: absolute; right: -0.1em; top: -0.3em;
+    font: 800 5em/1 "Shippori Mincho", serif; color: var(--fg); opacity: .06;
+    letter-spacing: -0.04em; pointer-events: none; white-space: nowrap;
+  }
+  .card > * { position: relative; z-index: 1; }
+  .card header { border-bottom: 0.12em solid var(--accent); padding-bottom: 0.35em; }
+  .card .ho-label { font-size: 0.72em; letter-spacing: 0.3em; color: var(--accent); font-weight: 700; display: block; }
+  .card .ho-title { font: 800 1.9em/1.25 "Shippori Mincho", "Yu Mincho", serif; overflow-wrap: anywhere; }
+  .card .scn { font-size: 0.7em; color: var(--sub); letter-spacing: 0.1em; }
+  .lbl {
+    display: inline-block; background: var(--accent); color: var(--accent-fg);
+    font-size: 0.68em; font-weight: 700; letter-spacing: 0.12em;
+    padding: 0.15em 0.55em; border-radius: 0.2em; white-space: nowrap;
+  }
+  .card .rec { display: flex; gap: 0.5em; align-items: baseline; font-weight: 700; font-size: 0.95em; }
+  .card .rec .val { overflow-wrap: anywhere; }
+  .card .body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 0.55em; overflow: hidden; }
+  .card .text { line-height: 1.75; white-space: pre-wrap; text-align: justify; overflow-wrap: anywhere; }
+  .card .mission { border: 0.08em solid var(--line); border-radius: 0.3em; padding: 0.9em 0.8em 0.55em; position: relative; margin-top: 0.4em; }
+  .card .mission > .lbl { position: absolute; top: -0.6em; left: 0.7em; }
+  .card .mission .text { font-weight: 700; }
+  .card.secret { --bg: #1c0d10; --line: #4a2a30; }
+  .card.secret.theme-paper, .card.secret.theme-white { --bg: #fbf3f1; --line: #e2c2bc; }
+  .card.secret.theme-moss { --bg: #0d1712; }
+  .card.secret.theme-navy { --bg: #0a1220; }
+  .card .seal {
+    position: absolute; right: 1em; bottom: 0.9em; z-index: 0;
+    font: 800 2.4em/1 "Shippori Mincho", serif; color: var(--accent); opacity: .18;
+    border: 0.08em solid currentColor; border-radius: 0.15em; padding: 0.1em 0.2em; transform: rotate(-8deg);
+  }
+  .card .warn { font-size: 0.7em; color: var(--sub); letter-spacing: 0.08em; }
+  .card .body.overflow { box-shadow: inset 0 -0.3em 0 -0.1em #f0a; }
+
+  /* ---------- 印刷 ---------- */
+  @media print {
+    body { background: #fff; }
+    .panel, .tabs, .textout { display: none !important; }
+    .app { display: block; }
+    .preview { padding: 0; overflow: visible; }
+    .sheets { zoom: 1; gap: 0; display: block !important; }
+    .sheet { box-shadow: none; break-after: page; page-break-after: always; }
+    .sheet:last-child { break-after: auto; page-break-after: auto; }
+    .card .body.overflow { box-shadow: none; }
+  }
+  @page { size: A4 portrait; margin: 0; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+    background: #222; color: #fff; padding: 8px 16px; border-radius: 999px; font-size: 13px; font-weight: 700;
+    opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 10;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body class="sys-sg">
+<div class="app">
+  <aside class="panel">
+    <h1>TRPGハンドアウトメーカー</h1>
+    <p class="hint">シノビガミ・クトゥルフ神話TRPGのハンドアウトを作って、カード印刷やテキストコピーができます。🎲で 空いている欄に ランダムな案を入れます。</p>
+    <div class="sys" id="sys">
+      <button data-sys="sg" aria-pressed="true">シノビガミ</button>
+      <button data-sys="coc" aria-pressed="false">クトゥルフ神話TRPG</button>
+    </div>
+    <label class="f">シナリオ名<input type="text" id="scenario" placeholder="（省略可）"></label>
+    <div id="hoList" style="display:flex;flex-direction:column;gap:10px"></div>
+    <div class="btns">
+      <button id="add">＋ ハンドアウトを追加</button>
+      <button id="rollAll">🎲 空欄をぜんぶ埋める</button>
+    </div>
+    <div class="controls">
+      <label for="theme">デザイン</label>
+      <select id="theme">
+        <option value="auto">システムに合わせる</option>
+        <option value="dark">ブラック×レッド</option>
+        <option value="moss">モスグリーン×ゴールド</option>
+        <option value="navy">ネイビー×ゴールド</option>
+        <option value="paper">生成り紙</option>
+        <option value="white">白（インク節約）</option>
+      </select>
+      <label for="printSecret">秘密カード</label>
+      <select id="printSecret">
+        <option value="yes">印刷する（公開カードの右どなり）</option>
+        <option value="no">印刷しない</option>
+      </select>
+      <label for="zoom">表示倍率</label>
+      <input id="zoom" type="range" min="0.3" max="1.2" step="0.05" value="0.7">
+    </div>
+    <div class="btns">
+      <button class="primary" id="print">印刷 / PDF保存</button>
+      <button id="reset">サンプルに戻す</button>
+    </div>
+    <div class="status" id="status"></div>
+    <details>
+      <summary>つかいかた</summary>
+      <ol>
+        <li>上でシステムをえらび、ハンドアウトごとに項目を書きます（シノビガミとCoCは別々に保存されます）</li>
+        <li>「テキスト」タブで、公開情報まとめ と ハンドアウトごとの秘密 をコピーできます。秘密はプレイヤーへ個別に送ってください</li>
+        <li>印刷するときは 用紙 <b>A4</b>・余白 <b>なし</b>・倍率 <b>100%</b>・<b>背景のグラフィック ON</b>。L判(89×127mm)が4枚ならびます</li>
+      </ol>
+      文章が長くて入りきらないときは文字を自動で縮小します。それでも溢れるとカード下部にピンクの線が出ます。
+    </details>
+  </aside>
+  <main class="preview">
+    <div class="tabs" role="tablist">
+      <button role="tab" data-view="cards" aria-selected="true">カード</button>
+      <button role="tab" data-view="text" aria-selected="false">テキスト</button>
+    </div>
+    <div class="sheets" id="sheets"></div>
+    <div class="textout" id="textout"></div>
+  </main>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'trpg-handout-maker-v1';
+
+/* ---------- システム定義 ---------- */
+const SYS = {
+  sg: {
+    name: 'シノビガミ', theme: 'dark',
+    kinds: ['PC', 'NPC', 'プライズ'],
+    secretWord: '秘密',
+    sample: () => [
+      { kind: 'PC', label: 'PC①', title: '守り人', rec: '鞍馬神流', intro: 'あなたは幼なじみの少女・水無瀬灯（みなせ あかり）が、ここ数日 何者かに見張られていることに気づいた。\n彼女はただの女子高生のはずだ。だが、夜ごと屋根の上に立つ影は、たしかに忍びの気配をまとっていた。', mission: '水無瀬灯を守ること。', secret: 'あなたは灯の体に「封印の鍵」が宿っていることを、流派から知らされている。\n鍵が奪われれば、この街に眠るものが目を覚ます。\nあなたの【本当の使命】は、鍵が奪われそうになったとき、灯ごと封印を閉じることである。' },
+      { kind: 'PC', label: 'PC②', title: '追う者', rec: '特になし', intro: 'かつての兄弟子・久遠（くおん）が里を抜けて三年。\nあなたはついに、この街で彼の痕跡を見つけた。', mission: '久遠の居場所を突き止めること。', secret: '久遠が里を抜けたのは、あなたをかばったためである。\nあの夜の罪は、本当はあなたが犯したものだ。このことを誰にも知られてはならない。' },
+    ],
+  },
+  coc: {
+    name: 'クトゥルフ神話TRPG', theme: 'moss',
+    kinds: ['HO', 'NPC'],
+    secretWord: '秘匿',
+    sample: () => [
+      { kind: 'HO', label: 'HO1', title: '探偵', rec: '推奨職業：私立探偵／推奨技能：〈目星〉〈聞き耳〉', intro: 'あなたは小さな探偵事務所を営んでいる。\nある雨の日、「一週間前から姉が帰ってこない」という若い女性が事務所を訪ねてきた。', mission: '', secret: 'あなたは十年前にも、同じ名前の女性から同じ依頼を受けたことがある。\nそのときの依頼人は、調査の途中で姿を消した。' },
+      { kind: 'HO', label: 'HO2', title: '幼なじみ', rec: '推奨職業：自由／HO1と知り合いであること', intro: '行方不明になった女性・白石沙耶（しらいし さや）は、あなたの幼なじみだ。\n最後に届いたメッセージは「海の音がうるさくて眠れない」だった。', mission: '', secret: 'あなたは沙耶が消える前の晩、彼女と電話で話している。\n受話器の向こうで、彼女は聞いたことのない言葉で歌っていた。' },
+    ],
+  },
+};
+
+/* ---------- ランダム案（オリジナル表） ---------- */
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const fill = (tpl, dict) => tpl.replace(/\{(\w+)\}/g, (_, k) => pick(dict[k]));
+
+const IDEAS = {
+  sg: {
+    title: ['守り人', '追う者', '転校生', '裏切りの影', '封印の継承者', '仇討ち', '見習い', '語り部', '最後の弟子', '運び屋', '監視者', '迷い子'],
+    rec: ['斜歯忍軍', '鞍馬神流', 'ハグレモノ', '比良坂機関', '私立御斎学園', '隠忍の血統', '特になし', '特になし', '表の顔が学生', '表の顔が社会人'],
+    intro: [
+      'あなたのもとに、{who}から一通の手紙が届いた。そこには「{item}が盗まれた」とだけ書かれていた。',
+      '{place}で、{who}が何者かに襲われた。現場には、見覚えのある忍具が落ちていた。',
+      'ある夜、あなたは{place}で{who}と出会った。その人物は、あなたの名を知っていた。',
+      '流派から新たな任務が下された。{place}に潜み、{who}の動向を探れという。',
+    ],
+    mission: ['{who}を守ること。', '{who}の正体を突き止めること。', '{item}を手に入れること。', '{who}を討つこと。', 'この事件の真相を明らかにすること。', '{item}を本来の持ち主に返すこと。'],
+    secret: [
+      'あなたは{who}と密かに通じている。\nあなたの【本当の使命】は、{item}を{who}に渡すことである。',
+      '{who}は、かつてあなたが手にかけた者の家族である。このことを知られてはならない。',
+      'あなたは{item}の封印が解けかけていることを知っている。封印が解ければ、{place}は一夜で灰になるだろう。',
+      'あなたの正体は、敵対する流派から送り込まれた間者である。\nあなたの【本当の使命】は、この任務を失敗させることである。',
+      'あなたは三日前に一度死んでいる。今のあなたを動かしているのは、{item}の力である。',
+      'あなたは{who}に命を救われた借りがある。{who}が傷つきそうなとき、あなたは何よりそれを止めなければならない。',
+    ],
+    dict: {
+      who: ['依頼人の少女', '消えた兄弟子', '転校生', '謎の老人', '街を騒がせる妖魔', '敵対流派の上忍', '担任教師', 'あなたの師匠', '双子の妹', '神社の巫女'],
+      item: ['封印の巻物', '古い鏡', '呪われた刀', '一族の秘伝書', '黒い勾玉', '鬼の面', '銀の鈴'],
+      place: ['夜の学校', '寂れた神社', '再開発地区', '港の倉庫街', '山奥の廃村', '駅前の雑居ビル'],
+    },
+  },
+  coc: {
+    title: ['探偵', '記者', '医師', '依頼人の友人', '家族', '古書店主', '刑事', '旧家の跡取り', '大学院生', '帰郷者', '目撃者', '代理人'],
+    rec: ['推奨職業：私立探偵', '推奨職業：記者', '推奨職業：医師', '推奨職業：自由', '推奨技能：〈図書館〉〈目星〉', '推奨技能：〈心理学〉〈説得〉', '推奨：{who}と知り合いであること'],
+    intro: [
+      'あなたは{who}から、「{place}を調べてほしい」という依頼を受けた。',
+      '{who}が行方不明になって三日が経つ。最後に目撃されたのは{place}だった。',
+      'あなたのもとに、差出人のない小包が届いた。中には{item}が入っていた。',
+      '{place}で奇妙な事件が起きた。あなたは偶然、その場に居合わせた。',
+    ],
+    mission: [],
+    secret: [
+      'あなたは{place}で{event}を見てしまった。それ以来、夜になると同じ夢を見る。',
+      'あなたは{who}と、過去に深い関わりがある。そのことを、まだ誰にも話していない。',
+      'あなたの家系には、「{place}に近づいてはならない」という言い伝えがある。',
+      '{item}は、もともとあなたの祖父のものだった。祖父はそれを手にした年に亡くなっている。',
+      'あなたは事件の数日前、{who}から「もし私がいなくなったら、{item}を燃やして」と頼まれていた。',
+    ],
+    dict: {
+      who: ['依頼人の女性', '大学の恩師', '幼なじみ', '古書店の店主', '町の医者', '失踪した兄', '地元の神父', '新聞社の先輩'],
+      item: ['古びた日記', '見知らぬ言語の手紙', '黒い石の彫像', '一枚の写真', '鍵のかかった木箱', '片方だけの耳飾り'],
+      place: ['海辺の村', '閉鎖された病院', '郊外の洋館', '大学の地下書庫', '山あいの温泉宿', '廃線になった駅'],
+      event: ['水の中から人が歩いて出てくるところ', '窓の外を横切る大きな影', '誰もいない部屋で回る蓄音機', '自分そっくりの人影'],
+    },
+  },
+};
+function idea(sys, field) {
+  const t = IDEAS[sys];
+  const list = t[field];
+  return list && list.length ? fill(pick(list), t.dict) : '';
+}
+
+/* ---------- 状態 ---------- */
+let state = null;
+const newHO = (sys, i) => ({ kind: SYS[sys].kinds[0], label: (sys === 'sg' ? 'PC' : 'HO') + (sys === 'sg' ? '①②③④⑤⑥⑦⑧⑨⑩'[i] || i + 1 : i + 1), title: '', rec: '', intro: '', mission: '', secret: '' });
+function freshState() {
+  return { sys: 'sg', theme: 'auto', printSecret: 'yes',
+    sg: { scenario: '', hos: SYS.sg.sample() },
+    coc: { scenario: '', hos: SYS.coc.sample() } };
+}
+const cur = () => state[state.sys];
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+/* ---------- 入力フォーム ---------- */
+const FIELDS = [
+  ['title', 'タイトル', 'input'],
+  ['rec', '推奨', 'input'],
+  ['intro', '導入（公開）', 'area'],
+  ['mission', '使命（公開）', 'area', 'sg-only'],
+  ['secret', '', 'area'],
+];
+function renderForm() {
+  const s = state.sys, list = cur().hos, word = SYS[s].secretWord;
+  $('scenario').value = cur().scenario;
+  $('hoList').innerHTML = list.map((h, i) => `
+    <div class="ho" data-i="${i}">
+      <div class="ho-head">
+        <b>${esc(h.label || '（無題）')}</b>
+        <button class="mini" data-act="roll" title="空欄にランダムな案を入れる">🎲</button>
+        <button class="mini" data-act="up" ${i === 0 ? 'disabled' : ''} title="上へ">↑</button>
+        <button class="mini" data-act="down" ${i === list.length - 1 ? 'disabled' : ''} title="下へ">↓</button>
+        <button class="mini" data-act="dup" title="複製">複製</button>
+        <button class="mini" data-act="del" title="削除">削除</button>
+      </div>
+      <div class="two">
+        <label class="f">種別<select data-k="kind" class="kind">${SYS[s].kinds.map(k => `<option ${k === h.kind ? 'selected' : ''}>${k}</option>`).join('')}</select></label>
+        <label class="f">番号・名前<input type="text" data-k="label" value="${esc(h.label)}"></label>
+      </div>
+      ${FIELDS.map(([k, name, type, cls]) => `<label class="f ${cls || ''}">${k === 'secret' ? word + '（非公開）' : name}${
+        type === 'input' ? `<input type="text" data-k="${k}" value="${esc(h[k])}">` : `<textarea data-k="${k}" rows="${k === 'secret' || k === 'intro' ? 4 : 2}">${esc(h[k])}</textarea>`}</label>`).join('')}
+    </div>`).join('');
+}
+
+function rollHO(h) {
+  for (const k of ['title', 'rec', 'intro', 'mission', 'secret']) {
+    if (k === 'mission' && state.sys !== 'sg') continue;
+    if (!h[k].trim()) h[k] = idea(state.sys, k);
+  }
+}
+
+/* ---------- 出力 ---------- */
+function cardHTML(h, secret, theme, scenario) {
+  const s = state.sys, word = SYS[s].secretWord;
+  const deco = (h.label.match(/(PC|HO|NPC)\s*[\d①-⑳]+/i) || [h.label])[0] || 'HO';
+  const head = `
+    <header>
+      <span class="ho-label">${secret ? 'SECRET' : 'HANDOUT'}${h.kind && !/^(PC|HO)$/.test(h.kind) ? ' / ' + esc(h.kind) : ''}</span>
+      <div class="ho-title">${esc(h.label)}${h.title ? (secret ? '' : '　' + esc(h.title)) : ''}${secret ? 'の' + word : ''}</div>
+      ${scenario ? `<div class="scn">${esc(scenario)}</div>` : ''}
+    </header>`;
+  if (secret) {
+    return `<div class="card secret theme-${theme}"><div class="deco">${esc(deco)}</div>${head}
+      <div class="body"><div class="text">${esc(h.secret)}</div></div>
+      <div class="warn">この${word}は、本人以外に見せないでください</div>
+      <div class="seal">${s === 'sg' ? '秘' : '匿'}</div></div>`;
+  }
+  return `<div class="card theme-${theme}"><div class="deco">${esc(deco)}</div>${head}
+    ${h.rec ? `<div class="rec"><span class="lbl">推奨</span><span class="val">${esc(h.rec.replace(/^推奨\s*[:：]\s*/, ''))}</span></div>` : ''}
+    <div class="body">
+      ${h.intro ? `<div class="text">${esc(h.intro)}</div>` : ''}
+      ${s === 'sg' && h.mission ? `<div class="mission"><span class="lbl">使命</span><div class="text">${esc(h.mission)}</div></div>` : ''}
+    </div></div>`;
+}
+
+// 本文が溢れたら文字を縮小
+function fitBody(el) {
+  let size = 1;
+  el.style.fontSize = size + 'em';
+  while (el.scrollHeight > el.clientHeight + 1 && size > 0.55) {
+    size -= 0.025;
+    el.style.fontSize = size + 'em';
+  }
+  el.classList.toggle('overflow', el.scrollHeight > el.clientHeight + 1);
+}
+
+function publicText(h) {
+  const s = state.sys;
+  const lines = [s === 'sg' ? `【${h.label}】${h.title}` : `■${h.label}${h.title ? '「' + h.title + '」' : ''}`];
+  if (h.rec) lines.push(/^推奨/.test(h.rec) ? h.rec : '推奨：' + h.rec);
+  if (h.intro) lines.push(h.intro);
+  if (s === 'sg' && h.mission) lines.push('【使命】' + h.mission);
+  return lines.join('\n');
+}
+function secretText(h) {
+  const word = SYS[state.sys].secretWord;
+  return (state.sys === 'sg' ? `【${h.label}の${word}】` : `■${h.label} ${word}`) + '\n' + h.secret;
+}
+
+function renderOutput() {
+  const s = state.sys, c = cur();
+  const theme = state.theme === 'auto' ? SYS[s].theme : state.theme;
+  const hos = c.hos.filter(h => h.label || h.title || h.intro || h.mission || h.secret);
+  const withSecret = state.printSecret === 'yes';
+
+  const cards = [];
+  for (const h of hos) {
+    cards.push(cardHTML(h, false, theme, c.scenario));
+    if (withSecret) cards.push(h.secret ? cardHTML(h, true, theme, c.scenario) : '');
+  }
+  const sheets = $('sheets');
+  sheets.style.setProperty('--cw', '89mm');
+  sheets.style.setProperty('--ch', '127mm');
+  sheets.style.setProperty('--fs', (89 / 30) + 'mm');
+  let html = '';
+  for (let i = 0; i < cards.length; i += 4) {
+    html += '<div class="sheet">' + cards.slice(i, i + 4).map(x => `<div class="slot">${x}</div>`).join('') + '</div>';
+  }
+  sheets.innerHTML = html;
+  sheets.querySelectorAll('.card .body').forEach(fitBody);
+  const over = sheets.querySelectorAll('.body.overflow').length;
+  $('status').textContent = `${hos.length}件 / A4 ${Math.ceil(cards.length / 4) || 0}ページ` + (over ? `　⚠ ${over}枚で文章が溢れています` : '');
+
+  const word = SYS[s].secretWord;
+  const pub = (c.scenario ? `『${c.scenario}』\n\n` : '') + hos.map(publicText).join('\n\n');
+  $('textout').innerHTML = `
+    <div class="tbox"><h3>公開情報まとめ<button class="mini" data-copy="pub">コピー</button></h3><pre>${esc(pub)}</pre></div>
+    ${hos.filter(h => h.secret).map((h, i) => `
+      <div class="tbox secret"><h3>${esc(h.label)} の${word}（本人だけに送る）<button class="mini" data-copy="${c.hos.indexOf(h)}">コピー</button></h3><pre>${esc(secretText(h))}</pre></div>`).join('')}`;
+  $('textout').dataset.pub = pub;
+}
+
+function save() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+}
+function applySys() {
+  document.body.classList.toggle('sys-sg', state.sys === 'sg');
+  document.body.classList.toggle('sys-coc', state.sys === 'coc');
+  document.querySelectorAll('#sys button').forEach(b => b.setAttribute('aria-pressed', b.dataset.sys === state.sys ? 'true' : 'false'));
+}
+function renderAll() { applySys(); renderForm(); renderOutput(); save(); }
+
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 1200);
+}
+async function copy(text) {
+  try { await navigator.clipboard.writeText(text); toast('コピーしました'); }
+  catch (e) { prompt('コピーしてください', text); }
+}
+
+/* ---------- 初期化 ---------- */
+(function init() {
+  try { state = JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch (e) {}
+  if (!state || !state.sg || !state.coc) state = freshState();
+  $('theme').value = state.theme;
+  $('printSecret').value = state.printSecret;
+
+  $('sys').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    state.sys = b.dataset.sys; renderAll();
+  });
+  $('scenario').addEventListener('input', e => { cur().scenario = e.target.value; renderOutput(); save(); });
+
+  let timer;
+  $('hoList').addEventListener('input', e => {
+    const k = e.target.dataset.k; if (!k) return;
+    const i = +e.target.closest('.ho').dataset.i;
+    cur().hos[i][k] = e.target.value;
+    if (k === 'label') e.target.closest('.ho').querySelector('.ho-head b').textContent = e.target.value || '（無題）';
+    clearTimeout(timer); timer = setTimeout(() => { renderOutput(); save(); }, 200);
+  });
+  $('hoList').addEventListener('click', e => {
+    const b = e.target.closest('button[data-act]'); if (!b) return;
+    const list = cur().hos, i = +b.closest('.ho').dataset.i;
+    const act = b.dataset.act;
+    if (act === 'roll') rollHO(list[i]);
+    if (act === 'up' && i > 0) [list[i - 1], list[i]] = [list[i], list[i - 1]];
+    if (act === 'down' && i < list.length - 1) [list[i + 1], list[i]] = [list[i], list[i + 1]];
+    if (act === 'dup') list.splice(i + 1, 0, { ...list[i], label: list[i].label + '（コピー）' });
+    if (act === 'del') {
+      if (!confirm(`「${list[i].label || '無題'}」を削除しますか？`)) return;
+      list.splice(i, 1);
+    }
+    renderAll();
+  });
+  $('add').addEventListener('click', () => { cur().hos.push(newHO(state.sys, cur().hos.length)); renderAll(); });
+  $('rollAll').addEventListener('click', () => { cur().hos.forEach(rollHO); renderAll(); });
+  $('theme').addEventListener('change', e => { state.theme = e.target.value; renderOutput(); save(); });
+  $('printSecret').addEventListener('change', e => { state.printSecret = e.target.value; renderOutput(); save(); });
+  $('zoom').addEventListener('input', e => document.documentElement.style.setProperty('--zoom', e.target.value));
+  $('print').addEventListener('click', () => {
+    document.querySelector('.tabs [data-view="cards"]').click();
+    window.print();
+  });
+  $('reset').addEventListener('click', () => {
+    if (!confirm(`${SYS[state.sys].name}の入力内容をサンプルで置き換えますか？`)) return;
+    state[state.sys] = { scenario: '', hos: SYS[state.sys].sample() };
+    renderAll();
+  });
+  document.querySelector('.tabs').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    document.querySelectorAll('.tabs button').forEach(x => x.setAttribute('aria-selected', x === b ? 'true' : 'false'));
+    const text = b.dataset.view === 'text';
+    $('sheets').style.display = text ? 'none' : '';
+    $('textout').classList.toggle('on', text);
+  });
+  $('textout').addEventListener('click', e => {
+    const b = e.target.closest('[data-copy]'); if (!b) return;
+    copy(b.dataset.copy === 'pub' ? $('textout').dataset.pub : secretText(cur().hos[+b.dataset.copy]));
+  });
+
+  renderAll();
+  document.fonts.ready.then(renderOutput);
+})();
+</script>
+</body>
+</html>
