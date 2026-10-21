@@ -24,15 +24,15 @@
 - `tests/test.js` … 自動テスト（`node tests/test.js` で実行、105ケース）
 
 ## こうかい版（ブラウザで ひらくURL）
-https://claude.ai/code/artifact/c5a48ffe-1e0d-44f9-992f-923a850c85ce
+https://tkamiyoshi.github.io/Private_tools/kiichi-app/
 
-スマホ・タブレットは このURLが かんたんです。
-（さいしょは じぶんだけ しか 見られません。みんなに 見せるときは ページの 共有メニューから リンク共有を オンに してください）
+スマホ・タブレットは このURLが かんたんです。だれでも ひらけます。
+GitHub Pages（リポジトリ `tkamiyoshi/Private_tools` の main ブランチ）から 配信しています。
 
 ## 手を入れるときの ながれ
 1. `index.html` を なおす
 2. `node tests/test.js` … テストが ぜんぶ PASS することを かくにん（105ケース）
-3. `node tools/build-artifact.js` … 公開用 `dist/kiichi-app.html` を つくりなおす
-4. 3で できたファイルを 同じURLへ 再公開する（URLは かわりません）
+3. コミットして main に push する … 1〜2分で こうかい版に はんえいされます（URLは かわりません）
 
+`tools/build-artifact.js` は まえの こうかい先（Claude の Artifact）用の ビルドです。いまは つかっていません。
 `dist/` は 生成物なので Git では ふくめていません。
