@@ -16,11 +16,12 @@
 | ➕ けいさんチャレンジ | 四則演算クイズ10問。5モード×3レベル |
 | 🎯 かずあて | 1〜100のひみつの数をあてる |
 | 👆 すうじタッチ | 1〜25を順にタッチするタイムアタック |
+| 🔍 ヒット＆ブロー | 3けた・4けたの ひみつの数を ヒット／ブローのヒントで あてる |
 
 ## ファイル
 - `index.html` … アプリ本体（これ1つで完結）
 - `docs/` … 要件定義・仕様・設計・開発メモ・検証報告
-- `tests/test.js` … 自動テスト（`node tests/test.js` で実行、64ケース）
+- `tests/test.js` … 自動テスト（`node tests/test.js` で実行、105ケース）
 
 ## こうかい版（ブラウザで ひらくURL）
 https://claude.ai/code/artifact/c5a48ffe-1e0d-44f9-992f-923a850c85ce
@@ -30,7 +31,7 @@ https://claude.ai/code/artifact/c5a48ffe-1e0d-44f9-992f-923a850c85ce
 
 ## 手を入れるときの ながれ
 1. `index.html` を なおす
-2. `node tests/test.js` … テストが ぜんぶ PASS することを かくにん（79ケース）
+2. `node tests/test.js` … テストが ぜんぶ PASS することを かくにん（105ケース）
 3. `node tools/build-artifact.js` … 公開用 `dist/kiichi-app.html` を つくりなおす
 4. 3で できたファイルを 同じURLへ 再公開する（URLは かわりません）
 

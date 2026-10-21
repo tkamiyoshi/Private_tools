@@ -57,11 +57,12 @@ const reg = new Map();
 function get(sel) { if (!reg.has(sel)) reg.set(sel, new El('div', sel)); return reg.get(sel); }
 
 // タブ/パネルの実体
-const TABS = ['clock','cal','calc','watch','puzzle','quiz','guess','touch'];
+const TABS = ['clock','cal','calc','watch','puzzle','quiz','guess','touch','hb'];
 const tabEls = TABS.map(id => { const e = new El('button', '.tab'); e.dataset.tab = id; return e; });
 const panelEls = TABS.map(id => { const e = new El('section', '#p-' + id); e.classes.add('panel'); e.id = 'p-' + id; if (id === 'clock') e.classes.add('active'); reg.set('#p-' + id, e); return e; });
 const modeChips = ['add','sub','mul','div','mix'].map(m => { const e = new El('button', '.chip'); e.dataset.m = m; e.parent = get('#qMode'); return e; });
 const levelChips = ['1','2','3'].map(l => { const e = new El('button', '.chip'); e.dataset.l = l; e.parent = get('#qLevel'); return e; });
+const hbChips = ['3','4'].map(d => { const e = new El('button', '.chip'); e.dataset.d = d; e.parent = get('#hbLevel'); return e; });
 
 const document = {
   querySelector(sel) {
@@ -76,6 +77,7 @@ const document = {
     if (sel === '.panel') return panelEls;
     if (sel === '#qMode .chip') return modeChips;
     if (sel === '#qLevel .chip') return levelChips;
+    if (sel === '#hbLevel .chip') return hbChips;
     if (sel === '#qChoices .choice') return get('#qChoices').children;
     return [];
   },
@@ -106,7 +108,7 @@ function flushTimeouts() { const t = pendingTimeouts; pendingTimeouts = []; t.fo
 const runner = new Function(
   'document','window','localStorage','requestAnimationFrame','cancelAnimationFrame',
   'setInterval','clearInterval','setTimeout','Element',
-  js + '\nreturn {Tabs, Puzzle};'
+  js + '\nreturn {Tabs, Puzzle, HitBlow};'
 );
 const api = runner(document, window, localStorage, requestAnimationFrame, cancelAnimationFrame,
   setIntervalX, clearIntervalX, setTimeoutX, El);
@@ -423,6 +425,84 @@ api.Tabs.activate('puzzle');
   get('#swStart').fire('click', {});
   get('#swLap').fire('click', {});
   ok('ストップ中でもラップを記録できる', get('#laps').children.length === 4, get('#laps').children.length);
+}
+
+console.log('\n== T13 ヒット＆ブロー ==');
+{
+  const J = api.HitBlow.judge;
+  const jr = (a, g) => { const r = J(a, g); return r.hit + 'H' + r.blow + 'B'; };
+  ok('判定: ぜんぶ一致は 3H0B', jr([1,2,3], [1,2,3]) === '3H0B');
+  ok('判定: 並びちがいは 0H3B', jr([1,2,3], [3,1,2]) === '0H3B');
+  ok('判定: 混在 1H1B', jr([1,2,3], [1,3,9]) === '1H1B', jr([1,2,3], [1,3,9]));
+  ok('判定: かすらない 0H0B', jr([1,2,3], [4,5,6]) === '0H0B');
+  ok('判定: 4けた 2H2B', jr([0,1,2,3], [0,1,3,2]) === '2H2B');
+
+  api.Tabs.activate('hb');
+  const pad = get('#hbPad'), log = get('#hbLog');
+  const key = n => pad.children.find(c => Number(c.dataset.n) === n);
+  const slots = () => (get('#hbSlots').innerHTML.match(/class="hbslot/g) || []).length;
+  const press = n => pad.fire('click', { target: key(n) });
+  ok('すうじキーが0〜9の10こ', pad.children.length === 10 && new Set(pad.children.map(c => c.dataset.n)).size === 10);
+  get('#hbNew').fire('click', {});
+  ok('3けたで 3マス表示', slots() === 3, slots());
+  ok('そろうまで「こたえる」は無効', get('#hbGo').disabled === true);
+  press(1);
+  ok('つかった すうじキーは無効化', key(1).disabled === true);
+  press(1);
+  ok('おなじ すうじは2かい入らない', (get('#hbSlots').innerHTML.match(/hbslot on/g) || []).length === 1);
+  get('#hbBack').fire('click', {});
+  ok('けすで1もじ戻る', (get('#hbSlots').innerHTML.match(/hbslot on/g) || []).length === 0 && key(1).disabled === false);
+  keydown('7'); keydown('8'); keydown('9');
+  ok('キーボードで入力できる', get('#hbGo').disabled === false && key(0).disabled === true);
+  keydown('Enter');
+  ok('キーボードEnterで こたえられる', log.children.length === 1 && log.children[0].dataset.guess === '789', log.children.length);
+
+  // 候補しぼりこみで解けるか（ゲームとして成立するか）
+  function perms(d) {
+    const out = [];
+    (function rec(cur) {
+      if (cur.length === d) { out.push(cur.slice()); return; }
+      for (let n = 0; n <= 9; n++) if (cur.indexOf(n) < 0) { cur.push(n); rec(cur); cur.pop(); }
+    })([]);
+    return out;
+  }
+  function solve(d) {
+    get('#hbNew').fire('click', {});
+    let cand = perms(d), n = 0;
+    while (n++ < 15) {
+      const g = cand[0];
+      g.forEach(press);
+      get('#hbGo').fire('click', {});
+      const row = log.children[0];
+      const h = Number(row.dataset.hit), b = Number(row.dataset.blow);
+      if (h === d) return n;
+      cand = cand.filter(c => { const r = J(c, g); return r.hit === h && r.blow === b; });
+      if (!cand.length) return -1;
+    }
+    return -1;
+  }
+  const n3 = solve(3);
+  ok('3けた: しぼりこみで15回以内に解ける', n3 > 0, n3);
+  ok('クリアで せいかい表示', get('#hbMsg').textContent.indexOf('せいかい') >= 0, get('#hbMsg').textContent);
+  ok('クリア後は入力できない', get('#hbGo').disabled === true && pad.children.every(c => c.disabled));
+  ok('3けたのベストが保存される', Number(store['kiichi.hb.best3']) === n3, store['kiichi.hb.best3']);
+  ok('ベスト表示', get('#hbBest').textContent === n3 + 'かい', get('#hbBest').textContent);
+
+  get('#hbLevel').fire('click', { target: hbChips[1] });
+  ok('4けたに切りかえで 4マス', slots() === 4 && hbChips[1].attrs['aria-pressed'] === 'true', slots());
+  ok('4けたのベストは別あつかい', get('#hbBest').textContent === '-', get('#hbBest').textContent);
+  const n4 = solve(4);
+  ok('4けた: しぼりこみで15回以内に解ける', n4 > 0, n4);
+  ok('4けたのベストが保存される', Number(store['kiichi.hb.best4']) === n4, store['kiichi.hb.best4']);
+
+  get('#hbNew').fire('click', {});
+  ok('あたらしいゲームで履歴クリア', log.children.length === 0 && get('#hbTries').textContent === '0');
+  get('#hbGiveUp').fire('click', {});
+  ok('こたえを みると答えが出る', /こたえは \d{4} /.test(get('#hbMsg').textContent), get('#hbMsg').textContent);
+  ok('こたえを見たあとは入力できない', pad.children.every(c => c.disabled));
+  api.Tabs.activate('calc');
+  keydown('5');
+  ok('ほかのタブではキー入力を受けない', get('#hbSlots').innerHTML.indexOf('hbslot on') < 0);
 }
 
 // ※ このテストはコード全体を別インスタンスとして再ロードするため、必ず最後に置くこと

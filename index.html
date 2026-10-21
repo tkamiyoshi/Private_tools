@@ -134,6 +134,22 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px);background:#ff5252;color:#fff}75%{transform:translateX(6px);background:#ff5252;color:#fff}}
 .bigstat{text-align:center;font-size:2rem;font-weight:800;font-variant-numeric:tabular-nums;color:var(--blu)}
 
+.hbslots{display:flex;gap:8px;justify-content:center;margin:4px 0 12px}
+.hbslot{width:54px;height:62px;border-radius:14px;border:3px dashed var(--line);background:#fff;display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:800;font-variant-numeric:tabular-nums}
+.hbslot.on{border-style:solid;border-color:var(--grn);color:#23966f}
+.hbpad{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;max-width:360px;margin:0 auto}
+.hkey{min-height:52px;border-radius:14px;background:#eafaf3;color:#23966f;font-size:1.4rem;font-weight:800;box-shadow:0 4px 0 rgba(0,0,0,.08)}
+.hkey:disabled{opacity:.3;box-shadow:none;cursor:default}
+.btn:disabled{opacity:.45;cursor:default}
+#hbMsg{text-align:center;font-size:1.2rem;font-weight:800;min-height:1.6em;margin:12px 0 6px}
+#hbLog{list-style:none;margin:10px 0 0;padding:0;max-height:300px;overflow-y:auto}
+#hbLog li{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border-bottom:1px dashed var(--line);font-weight:800}
+#hbLog .no{color:var(--sub);font-size:.85rem;min-width:2.4em}
+#hbLog .num{font-size:1.3rem;letter-spacing:.2em;font-variant-numeric:tabular-nums;flex:1}
+#hbLog .hb{display:flex;gap:6px;font-size:.85rem}
+#hbLog .hb span{border-radius:999px;padding:2px 10px}
+#hbLog .hit{background:#dcf7ec;color:#1f8a66} #hbLog .blow{background:#fff3cf;color:#a87400}
+
 @media (min-width:600px){
   body{font-size:17px}
   .card{padding:24px}
@@ -160,6 +176,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
     <button class="tab" role="tab" data-tab="quiz"   aria-selected="false" aria-controls="p-quiz">➕ けいさんチャレンジ</button>
     <button class="tab" role="tab" data-tab="guess"  aria-selected="false" aria-controls="p-guess">🎯 かずあて</button>
     <button class="tab" role="tab" data-tab="touch"  aria-selected="false" aria-controls="p-touch">👆 すうじタッチ</button>
+    <button class="tab" role="tab" data-tab="hb"     aria-selected="false" aria-controls="p-hb">🔍 ヒット＆ブロー</button>
   </div>
 </nav>
 
@@ -334,6 +351,34 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
       <div class="tgrid" id="tGrid"></div>
       <div class="row" style="margin-top:14px"><button class="btn blu" id="tNew">シャッフル</button></div>
       <p class="hint">1から25まで じゅんばんに タッチ！ さいそくタイムを めざそう</p>
+    </div>
+  </section>
+
+  <!-- ヒット＆ブロー -->
+  <section class="panel" id="p-hb" role="tabpanel">
+    <div class="card">
+      <h2 class="title">🔍 ヒット＆ブロー</h2>
+      <div class="chips" id="hbLevel">
+        <button class="chip" data-d="3" aria-pressed="true">3けた</button>
+        <button class="chip" data-d="4" aria-pressed="false">4けた</button>
+      </div>
+      <p class="hint" style="margin:0 0 10px">ひみつの かずを あてよう！（おなじ すうじは 2かい つかわないよ）<br>🟢ヒット … すうじも ばしょも あってる<br>🟡ブロー … すうじは あるけど ばしょが ちがう</p>
+      <div class="hbslots" id="hbSlots"></div>
+      <div class="hbpad" id="hbPad"></div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn gray" id="hbBack">← けす</button>
+        <button class="btn grn" id="hbGo">こたえる</button>
+      </div>
+      <div id="hbMsg"></div>
+      <div class="scores" style="margin-bottom:0">
+        <div class="score"><small>かいすう</small><b id="hbTries">0</b></div>
+        <div class="score"><small>ベスト</small><b id="hbBest">-</b></div>
+      </div>
+      <ul id="hbLog"></ul>
+      <div class="row" style="margin-top:14px">
+        <button class="btn gray" id="hbNew">あたらしい ゲーム</button>
+        <button class="btn gray" id="hbGiveUp">こたえを みる</button>
+      </div>
     </div>
   </section>
 
@@ -817,6 +862,106 @@ var Puzzle = (function(){
   });
   $("#tNew").addEventListener("click", newGame);
   newGame();
+})();
+
+/* ===== ヒット＆ブロー ===== */
+var HitBlow = (function(){
+  var digits = 3, secret = [], input = [], tries = 0, over = false, keys = [];
+  // ヒット = すうじも ばしょも 一致 / ブロー = すうじは あるが ばしょが ちがう
+  function judge(ans, guess){
+    var hit = 0, blow = 0;
+    for (var i = 0; i < guess.length; i++){
+      if (guess[i] === ans[i]) hit++;
+      else if (ans.indexOf(guess[i]) >= 0) blow++;
+    }
+    return { hit: hit, blow: blow };
+  }
+  function bestKey(){ return "kiichi.hb.best" + digits; }
+  function getBest(){ var b = Number(Store.get(bestKey(), "")); return b > 0 ? b : null; }
+  function showBest(){ var b = getBest(); $("#hbBest").textContent = b === null ? "-" : b + "かい"; }
+  function msg(t, color){ $("#hbMsg").textContent = t; $("#hbMsg").style.color = color || ""; }
+  function render(){
+    var h = "";
+    for (var i = 0; i < digits; i++) h += '<span class="hbslot' + (i < input.length ? " on" : "") + '">' + (i < input.length ? input[i] : "") + "</span>";
+    $("#hbSlots").innerHTML = h;
+    keys.forEach(function(b){
+      b.disabled = over || input.length >= digits || input.indexOf(Number(b.dataset.n)) >= 0;
+    });
+    $("#hbGo").disabled = over || input.length < digits;
+    $("#hbBack").disabled = over || input.length === 0;
+    $("#hbGiveUp").disabled = over;
+    $("#hbTries").textContent = tries;
+  }
+  function newGame(){
+    var pool = [0,1,2,3,4,5,6,7,8,9];
+    for (var i = pool.length - 1; i > 0; i--){ var j = Math.floor(Math.random() * (i + 1)), t = pool[i]; pool[i] = pool[j]; pool[j] = t; }
+    secret = pool.slice(0, digits); input = []; tries = 0; over = false;
+    $("#hbLog").innerHTML = "";
+    msg(digits + "けたの かずを えらんで「こたえる」を おしてね");
+    showBest(); render();
+  }
+  function push(n){
+    if (over || input.length >= digits || input.indexOf(n) >= 0) return;
+    input.push(n); render();
+  }
+  function back(){ if (over || !input.length) return; input.pop(); render(); }
+  function submit(){
+    if (over || input.length < digits) return;
+    tries++;
+    var r = judge(secret, input);
+    var li = document.createElement("li");
+    li.dataset.guess = input.join(""); li.dataset.hit = r.hit; li.dataset.blow = r.blow;
+    li.innerHTML = '<span class="no">' + tries + 'かいめ</span><span class="num">' + input.join("") +
+      '</span><span class="hb"><span class="hit">🟢 ' + r.hit + '</span><span class="blow">🟡 ' + r.blow + "</span></span>";
+    $("#hbLog").insertBefore(li, $("#hbLog").firstChild);
+    input = [];
+    if (r.hit === digits){
+      over = true;
+      var word = tries <= digits + 2 ? "てんさい！" : tries <= digits + 5 ? "じょうず！" : "クリア！";
+      msg("🎉 せいかい！ " + secret.join("") + "（" + tries + "かいめ）" + word, "var(--grn)");
+      var b = getBest();
+      if (b === null || tries < b) Store.set(bestKey(), tries);
+      showBest();
+    } else {
+      msg("🟢ヒット " + r.hit + "　🟡ブロー " + r.blow, "var(--grn)");
+    }
+    render();
+  }
+  function giveUp(){
+    if (over) return;
+    over = true; input = [];
+    msg("こたえは " + secret.join("") + " だったよ。また ちょうせん してね", "var(--pnk)");
+    render();
+  }
+  var padEl = $("#hbPad");
+  [1,2,3,4,5,6,7,8,9,0].forEach(function(n){
+    var b = document.createElement("button");
+    b.className = "hkey"; b.textContent = n; b.dataset.n = n;
+    b.setAttribute("aria-label", n + " を いれる");
+    padEl.appendChild(b); keys.push(b);
+  });
+  padEl.addEventListener("click", function(e){
+    var b = e.target.closest(".hkey"); if (!b || b.disabled) return;
+    push(Number(b.dataset.n));
+  });
+  $("#hbLevel").addEventListener("click", function(e){
+    var c = e.target.closest(".chip"); if (!c) return;
+    digits = Number(c.dataset.d);
+    $$("#hbLevel .chip").forEach(function(x){ x.setAttribute("aria-pressed", x === c ? "true" : "false"); });
+    newGame();
+  });
+  $("#hbBack").addEventListener("click", back);
+  $("#hbGo").addEventListener("click", submit);
+  $("#hbNew").addEventListener("click", newGame);
+  $("#hbGiveUp").addEventListener("click", giveUp);
+  document.addEventListener("keydown", function(e){
+    if (!$("#p-hb").classList.contains("active")) return;
+    if (/^[0-9]$/.test(e.key)) push(Number(e.key));
+    else if (e.key === "Backspace"){ e.preventDefault(); back(); }
+    else if (e.key === "Enter"){ e.preventDefault(); submit(); }
+  });
+  newGame();
+  return { judge: judge };
 })();
 
 /* ===== 起動時: 前回のタブを復元 ===== */
